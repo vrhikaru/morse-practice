@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>童軍摩斯密碼練習器 (互動測驗版)</title>
+    <title>童軍摩斯密碼練習器 (手機音效解鎖版)</title>
     <style>
         /* --- 視覺設計 --- */
         body { 
@@ -14,6 +14,8 @@
             color: #333;
             touch-action: manipulation; 
             user-select: none;
+            /* 修正手機點擊閃爍問題 */
+            -webkit-tap-highlight-color: transparent; 
         }
         .container { 
             max-width: 600px; 
@@ -66,17 +68,10 @@
         select { padding: 8px; font-size: 16px; border-radius: 6px; border: 2px solid #2e7d32; }
         #answerBox { font-size: 20px; font-weight: bold; margin-top: 15px; min-height: 35px; color: #333; }
 
-        /* 新增：使用者答題輸入框的樣式 */
         .guess-input {
-            width: 80px;
-            font-size: 24px;
-            padding: 10px;
-            margin: 15px 0;
-            text-align: center;
-            text-transform: uppercase;
-            border: 2px solid #2e7d32;
-            border-radius: 8px;
-            outline: none;
+            width: 80px; font-size: 24px; padding: 10px; margin: 15px 0;
+            text-align: center; text-transform: uppercase;
+            border: 2px solid #2e7d32; border-radius: 8px; outline: none;
         }
         .guess-input:focus { box-shadow: 0 0 8px rgba(46, 125, 50, 0.5); }
 
@@ -176,16 +171,57 @@
         const numberKeys = ['0','1','2','3','4','5','6','7','8','9'];
         const mixedKeys = [...letterKeys, ...numberKeys];
 
+        // --- 全新升級：手機瀏覽器音效解鎖機制 ---
         let audioCtx;
         const unitTime = 120; 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        let audioUnlocked = false; // 紀錄是否已經成功解鎖
 
+        function initAudioEngine() {
+            if (audioUnlocked) return;
+            
+            // 建立音效引擎，加入 webkit 前綴以完整支援 iOS Safari
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtx) audioCtx = new AudioContext();
+            
+            // 強制喚醒休眠中的音效引擎
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // 終極絕招：偷偷播放一段極短的無聲靜音，徹底突破 iOS 和 LINE 的限制
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0; // 設定音量為 0
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.001);
+
+            audioUnlocked = true; // 標記為已解鎖
+            
+            // 解鎖成功後，就不用再一直監聽使用者的碰觸了
+            document.removeEventListener('touchstart', initAudioEngine);
+            document.removeEventListener('pointerdown', initAudioEngine);
+        }
+
+        // 當網頁載入後，只要使用者手指碰到螢幕任何地方，就立刻啟動解鎖機制
+        document.addEventListener('touchstart', initAudioEngine);
+        document.addEventListener('pointerdown', initAudioEngine);
+
+
+        // --- 音效產生器邏輯 ---
         let continuousOscillator = null;
         function startContinuousTone() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            initAudioEngine(); // 確保每次發聲前，引擎絕對是啟動的
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
             continuousOscillator = audioCtx.createOscillator();
-            continuousOscillator.type = 'sine'; continuousOscillator.frequency.value = 600; 
-            continuousOscillator.connect(audioCtx.destination); continuousOscillator.start();
+            continuousOscillator.type = 'sine'; 
+            continuousOscillator.frequency.value = 600; 
+            continuousOscillator.connect(audioCtx.destination); 
+            continuousOscillator.start();
         }
         function stopContinuousTone() {
             if (continuousOscillator) {
@@ -245,13 +281,12 @@
             document.getElementById('outputText').value = result.trim(); await playMorseString(result.trim());
         }
 
-        // --- 聽讀測驗邏輯升級 ---
+        // --- 聽讀測驗邏輯 ---
         let currentQuizChar = ''; let currentQuizMorse = '';
         
         async function generateRandomQuiz() {
             document.getElementById('answerBox').innerText = '聽/看信號中...';
             document.getElementById('answerBox').style.color = "#333";
-            // 修改點：每次出新題目前，先把使用者之前的答案清空
             document.getElementById('userGuess').value = '';
             
             const mode = document.getElementById('quizMode').value;
@@ -266,41 +301,25 @@
             if (currentQuizMorse !== '') { await playMorseString(currentQuizMorse); }
         }
 
-        // 新增：檢查使用者輸入的答案是否正確
         function checkUserAnswer() {
-            // 防呆機制：如果還沒出題，就提醒使用者
             if (currentQuizChar === '') {
-                document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！';
-                document.getElementById('answerBox').style.color = "#d32f2f";
-                return;
+                document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！'; document.getElementById('answerBox').style.color = "#d32f2f"; return;
             }
-
-            // 取得使用者的輸入並轉為大寫
             const userGuess = document.getElementById('userGuess').value.toUpperCase();
-            
-            // 判斷是否空白
             if (userGuess === '') {
-                document.getElementById('answerBox').innerText = '你還沒輸入答案喔！';
-                document.getElementById('answerBox').style.color = "#d32f2f";
-                return;
+                document.getElementById('answerBox').innerText = '你還沒輸入答案喔！'; document.getElementById('answerBox').style.color = "#d32f2f"; return;
             }
 
-            // 核心比對邏輯
             if (userGuess === currentQuizChar) {
-                // 答對的視覺回饋
-                document.getElementById('answerBox').innerText = `🎉 答對了！答案正是 ${currentQuizChar} ( ${currentQuizMorse} )`;
-                document.getElementById('answerBox').style.color = "#2e7d32"; // 綠色
+                document.getElementById('answerBox').innerText = `🎉 答對了！答案正是 ${currentQuizChar} ( ${currentQuizMorse} )`; document.getElementById('answerBox').style.color = "#2e7d32"; 
             } else {
-                // 答錯的視覺回饋
-                document.getElementById('answerBox').innerText = `❌ 哎呀，猜錯了！再聽一次或重新修改答案吧。`;
-                document.getElementById('answerBox').style.color = "#d32f2f"; // 紅色
+                document.getElementById('answerBox').innerText = `❌ 哎呀，猜錯了！再聽一次或重新修改答案吧。`; document.getElementById('answerBox').style.color = "#d32f2f"; 
             }
         }
 
         function showAnswer() {
             if (currentQuizChar !== '') {
-                document.getElementById('answerBox').innerText = `答案是： ${currentQuizChar} ( ${currentQuizMorse} )`;
-                document.getElementById('answerBox').style.color = "#f57c00"; // 橘色
+                document.getElementById('answerBox').innerText = `答案是： ${currentQuizChar} ( ${currentQuizMorse} )`; document.getElementById('answerBox').style.color = "#f57c00"; 
             } else { 
                 document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！'; 
             }
