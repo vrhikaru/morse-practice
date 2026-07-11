@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>童軍摩斯密碼練習器 (終極發報版)</title>
+    <title>童軍摩斯密碼練習器 (互動測驗版)</title>
     <style>
         /* --- 視覺設計 --- */
         body { 
@@ -12,7 +12,6 @@
             padding: 20px; 
             text-align: center; 
             color: #333;
-            /* 防止手機點擊時出現反白或放大 */
             touch-action: manipulation; 
             user-select: none;
         }
@@ -39,9 +38,7 @@
         }
 
         /* --- 分頁按鈕 --- */
-        .tab-container {
-            display: flex; border-bottom: 2px solid #2e7d32; margin-bottom: 20px;
-        }
+        .tab-container { display: flex; border-bottom: 2px solid #2e7d32; margin-bottom: 20px; }
         .tab-button {
             flex: 1; background-color: #e8f5e9; color: #2e7d32; border: none;
             padding: 10px; font-size: 16px; font-weight: bold; cursor: pointer;
@@ -60,38 +57,46 @@
         }
         .action-btn { 
             background-color: #2e7d32; color: white; border: none; 
-            padding: 10px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; margin: 5px;
+            padding: 10px 15px; font-size: 16px; border-radius: 8px; cursor: pointer; margin: 5px;
         }
         .action-btn:hover { background-color: #1b5e20; }
         
         .practice-area { background-color: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
         .select-mode { margin-bottom: 15px; font-size: 16px; }
         select { padding: 8px; font-size: 16px; border-radius: 6px; border: 2px solid #2e7d32; }
-        #answerBox { font-size: 24px; font-weight: bold; color: #d32f2f; margin-top: 15px; min-height: 35px; }
+        #answerBox { font-size: 20px; font-weight: bold; margin-top: 15px; min-height: 35px; color: #333; }
+
+        /* 新增：使用者答題輸入框的樣式 */
+        .guess-input {
+            width: 80px;
+            font-size: 24px;
+            padding: 10px;
+            margin: 15px 0;
+            text-align: center;
+            text-transform: uppercase;
+            border: 2px solid #2e7d32;
+            border-radius: 8px;
+            outline: none;
+        }
+        .guess-input:focus { box-shadow: 0 0 8px rgba(46, 125, 50, 0.5); }
 
         /* --- 發報按鈕專屬設計 --- */
         #telegraphKey {
             width: 150px; height: 150px; background-color: #d32f2f; 
             color: white; border: none; border-radius: 50%; font-size: 24px; 
             font-weight: bold; cursor: pointer; margin: 20px auto; 
-            box-shadow: 0 8px 0 #b71c1c; /* 模擬按鈕厚度 */
-            transition: transform 0.05s, box-shadow 0.05s;
-            display: block;
+            box-shadow: 0 8px 0 #b71c1c; 
+            transition: transform 0.05s, box-shadow 0.05s; display: block;
         }
-        /* 按下時的視覺效果 */
         #telegraphKey:active, #telegraphKey.pressed {
-            transform: translateY(8px);
-            box-shadow: 0 0px 0 #b71c1c;
+            transform: translateY(8px); box-shadow: 0 0px 0 #b71c1c;
         }
-        #currentSignalDisplay {
-            font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1976d2; min-height: 40px;
-        }
+        #currentSignalDisplay { font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1976d2; min-height: 40px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>⛺ 童軍摩斯密碼練習器</h1>
-        
         <div id="lightBox"></div>
 
         <div class="tab-container">
@@ -109,7 +114,7 @@
 
         <div id="PracticeTab" class="tab-content">
             <div class="practice-area">
-                <p>仔細看燈光或聽聲音，猜猜看是哪個字母！</p>
+                <p>仔細看燈光或聽聲音，把聽到的字母或數字打出來！</p>
                 <div class="select-mode">
                     <label for="quizMode">選擇題型：</label>
                     <select id="quizMode">
@@ -118,28 +123,27 @@
                         <option value="numbers">🔢 僅數字</option>
                     </select>
                 </div>
+                
                 <button class="action-btn" onclick="generateRandomQuiz()">🎲 隨機出題</button>
-                <button class="action-btn" onclick="showAnswer()">👀 顯示答案</button>
-                <button class="action-btn" onclick="replayQuiz()">🔄 再播放一次</button>
-                <div id="answerBox">請點擊上方「隨機出題」開始測試</div>
+                <button class="action-btn" onclick="replayQuiz()">🔄 再聽一次</button>
+                
+                <br>
+                <input type="text" id="userGuess" class="guess-input" maxlength="1" placeholder="?">
+                <br>
+                <button class="action-btn" onclick="checkUserAnswer()" style="background-color: #1976d2;">✅ 檢查答案</button>
+                <button class="action-btn" onclick="showAnswer()" style="background-color: #757575;">👀 偷看答案</button>
+
+                <div id="answerBox">請點擊上方「隨機出題」開始測驗</div>
             </div>
         </div>
 
         <div id="ManualTab" class="tab-content">
             <div class="practice-area">
                 <p>請短按 (滴) 或長按 (答) 下方的紅色按鈕</p>
-                
-                <button id="telegraphKey" 
-                        onpointerdown="startPress(event)" 
-                        onpointerup="endPress(event)" 
-                        onpointerleave="endPress(event)">
-                    發報鍵
-                </button>
-                
+                <button id="telegraphKey" onpointerdown="startPress(event)" onpointerup="endPress(event)" onpointerleave="endPress(event)">發報鍵</button>
                 <div id="currentSignalDisplay">...</div>
                 <p>翻譯結果：</p>
                 <textarea id="manualOutputText" placeholder="你發送的文字會顯示在這裡..." readonly style="height: 60px;"></textarea>
-                
                 <button class="action-btn" onclick="addSpace()">➕ 新增空白</button>
                 <button class="action-btn" onclick="clearManualOutput()" style="background-color: #757575;">🗑️ 清除內容</button>
             </div>
@@ -147,7 +151,6 @@
     </div>
 
     <script>
-        // --- 分頁切換邏輯 ---
         function openTab(evt, tabName) {
             const tabContents = document.getElementsByClassName("tab-content");
             for (let i = 0; i < tabContents.length; i++) { tabContents[i].style.display = "none"; }
@@ -157,7 +160,6 @@
             evt.currentTarget.classList.add("active");
         }
 
-        // --- 字典建立 ---
         const morseDict = {
             'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
             'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
@@ -167,12 +169,8 @@
             '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
             '8': '---..', '9': '----.'
         };
-        
-        // 【新增】自動建立反向字典（摩斯密碼轉文字）
         const textDict = {};
-        for (const [key, value] of Object.entries(morseDict)) {
-            textDict[value] = key;
-        }
+        for (const [key, value] of Object.entries(morseDict)) { textDict[value] = key; }
 
         const letterKeys = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
         const numberKeys = ['0','1','2','3','4','5','6','7','8','9'];
@@ -182,124 +180,58 @@
         const unitTime = 120; 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // --- 音效控制改寫 (為了支援持續發聲) ---
         let continuousOscillator = null;
-
         function startContinuousTone() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             continuousOscillator = audioCtx.createOscillator();
-            continuousOscillator.type = 'sine'; 
-            continuousOscillator.frequency.value = 600; 
-            continuousOscillator.connect(audioCtx.destination);
-            continuousOscillator.start();
+            continuousOscillator.type = 'sine'; continuousOscillator.frequency.value = 600; 
+            continuousOscillator.connect(audioCtx.destination); continuousOscillator.start();
         }
-
         function stopContinuousTone() {
             if (continuousOscillator) {
-                continuousOscillator.stop();
-                continuousOscillator.disconnect();
-                continuousOscillator = null;
+                continuousOscillator.stop(); continuousOscillator.disconnect(); continuousOscillator = null;
             }
         }
-
-        // 舊的單發音效函式 (供自動播放使用)
         function playTone(durationMs) {
-            startContinuousTone();
-            setTimeout(stopContinuousTone, durationMs);
+            startContinuousTone(); setTimeout(stopContinuousTone, durationMs);
         }
 
-        // --- 發報練習專用邏輯 ---
-        let pressStartTime = 0;
-        let isPressing = false;
-        let currentSignal = ""; // 儲存目前正在輸入的符號 (例如 '.-')
-        let signalTimeout = null; // 用來判定是否輸入完一個字母的計時器
-
-        // 當按下按鈕時
+        // --- 發報練習區邏輯 ---
+        let pressStartTime = 0; let isPressing = false; let currentSignal = ""; let signalTimeout = null; 
         function startPress(e) {
-            e.preventDefault(); // 防止手機瀏覽器的一些預設滑動行為
-            if (isPressing) return;
-            isPressing = true;
-            
-            // 記錄按下的時間點
-            pressStartTime = Date.now();
-            
-            // 取消「結算字母」的計時器
-            clearTimeout(signalTimeout);
-            
-            // 發光發聲、按鈕變形
-            startContinuousTone();
-            document.getElementById('lightBox').classList.add('glow');
-            document.getElementById('telegraphKey').classList.add('pressed');
+            e.preventDefault(); if (isPressing) return;
+            isPressing = true; pressStartTime = Date.now(); clearTimeout(signalTimeout);
+            startContinuousTone(); document.getElementById('lightBox').classList.add('glow'); document.getElementById('telegraphKey').classList.add('pressed');
         }
-
-        // 當放開按鈕時
         function endPress(e) {
-            e.preventDefault();
-            if (!isPressing) return;
-            isPressing = false;
-            
-            // 停止發光發聲、按鈕復原
-            stopContinuousTone();
-            document.getElementById('lightBox').classList.remove('glow');
-            document.getElementById('telegraphKey').classList.remove('pressed');
-            
-            // 計算按了多久 (毫秒)
+            e.preventDefault(); if (!isPressing) return;
+            isPressing = false; stopContinuousTone(); document.getElementById('lightBox').classList.remove('glow'); document.getElementById('telegraphKey').classList.remove('pressed');
             const duration = Date.now() - pressStartTime;
-            
-            // 判斷是短按還是長按 (以 200 毫秒為界線)
-            if (duration < 200) {
-                currentSignal += ".";
-            } else {
-                currentSignal += "-";
-            }
-            
+            if (duration < 200) { currentSignal += "."; } else { currentSignal += "-"; }
             document.getElementById('currentSignalDisplay').innerText = currentSignal;
-
-            // 設定計時器：如果 600 毫秒後都沒有再按下，就進行翻譯
-            signalTimeout = setTimeout(() => {
-                processSignal();
-            }, 600);
+            signalTimeout = setTimeout(() => { processSignal(); }, 600);
         }
-
-        // 翻譯目前的訊號並輸出
         function processSignal() {
             if (currentSignal === "") return;
-            
-            // 去反向字典查詢，找不到就給個問號 '?'
             const translatedChar = textDict[currentSignal] || "?";
-            
             document.getElementById('manualOutputText').value += translatedChar;
-            
-            // 清空當前訊號，準備接收下一個
-            currentSignal = "";
-            document.getElementById('currentSignalDisplay').innerText = "...";
+            currentSignal = ""; document.getElementById('currentSignalDisplay').innerText = "...";
         }
-
-        function addSpace() {
-            document.getElementById('manualOutputText').value += " ";
-        }
-
+        function addSpace() { document.getElementById('manualOutputText').value += " "; }
         function clearManualOutput() {
-            document.getElementById('manualOutputText').value = "";
-            currentSignal = "";
-            document.getElementById('currentSignalDisplay').innerText = "...";
+            document.getElementById('manualOutputText').value = ""; currentSignal = ""; document.getElementById('currentSignalDisplay').innerText = "...";
         }
 
-        // --- 舊有的自動播放與出題邏輯 (維持不變) ---
+        // --- 核心播放邏輯 ---
         async function playMorseString(morseStr) {
             const lightBox = document.getElementById('lightBox');
             for (let i = 0; i < morseStr.length; i++) {
                 const char = morseStr[i];
                 if (char === '.' || char === '-') {
                     const duration = (char === '.') ? unitTime : unitTime * 3;
-                    lightBox.classList.add('glow');
-                    playTone(duration);
-                    await sleep(duration);
-                    lightBox.classList.remove('glow');
-                    await sleep(unitTime);
-                } else if (char === ' ') {
-                    await sleep(unitTime * 3);
-                }
+                    lightBox.classList.add('glow'); playTone(duration);
+                    await sleep(duration); lightBox.classList.remove('glow'); await sleep(unitTime);
+                } else if (char === ' ') { await sleep(unitTime * 3); }
             }
         }
 
@@ -308,32 +240,70 @@
             let result = '';
             for (let i = 0; i < input.length; i++) {
                 const char = input[i];
-                if (morseDict[char]) { result += morseDict[char] + ' '; } 
-                else if (char === ' ') { result += ' '; }
+                if (morseDict[char]) { result += morseDict[char] + ' '; } else if (char === ' ') { result += ' '; }
             }
-            document.getElementById('outputText').value = result.trim();
-            await playMorseString(result.trim());
+            document.getElementById('outputText').value = result.trim(); await playMorseString(result.trim());
         }
 
+        // --- 聽讀測驗邏輯升級 ---
         let currentQuizChar = ''; let currentQuizMorse = '';
+        
         async function generateRandomQuiz() {
             document.getElementById('answerBox').innerText = '聽/看信號中...';
+            document.getElementById('answerBox').style.color = "#333";
+            // 修改點：每次出新題目前，先把使用者之前的答案清空
+            document.getElementById('userGuess').value = '';
+            
             const mode = document.getElementById('quizMode').value;
             let availableKeys = mode === 'letters' ? letterKeys : (mode === 'numbers' ? numberKeys : mixedKeys);
             currentQuizChar = availableKeys[Math.floor(Math.random() * availableKeys.length)];
             currentQuizMorse = morseDict[currentQuizChar];
             await playMorseString(currentQuizMorse);
-            document.getElementById('answerBox').innerText = '播放完畢，你猜到了嗎？';
+            document.getElementById('answerBox').innerText = '播放完畢，請在上方輸入答案並檢查！';
         }
 
         async function replayQuiz() {
             if (currentQuizMorse !== '') { await playMorseString(currentQuizMorse); }
         }
 
+        // 新增：檢查使用者輸入的答案是否正確
+        function checkUserAnswer() {
+            // 防呆機制：如果還沒出題，就提醒使用者
+            if (currentQuizChar === '') {
+                document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！';
+                document.getElementById('answerBox').style.color = "#d32f2f";
+                return;
+            }
+
+            // 取得使用者的輸入並轉為大寫
+            const userGuess = document.getElementById('userGuess').value.toUpperCase();
+            
+            // 判斷是否空白
+            if (userGuess === '') {
+                document.getElementById('answerBox').innerText = '你還沒輸入答案喔！';
+                document.getElementById('answerBox').style.color = "#d32f2f";
+                return;
+            }
+
+            // 核心比對邏輯
+            if (userGuess === currentQuizChar) {
+                // 答對的視覺回饋
+                document.getElementById('answerBox').innerText = `🎉 答對了！答案正是 ${currentQuizChar} ( ${currentQuizMorse} )`;
+                document.getElementById('answerBox').style.color = "#2e7d32"; // 綠色
+            } else {
+                // 答錯的視覺回饋
+                document.getElementById('answerBox').innerText = `❌ 哎呀，猜錯了！再聽一次或重新修改答案吧。`;
+                document.getElementById('answerBox').style.color = "#d32f2f"; // 紅色
+            }
+        }
+
         function showAnswer() {
             if (currentQuizChar !== '') {
                 document.getElementById('answerBox').innerText = `答案是： ${currentQuizChar} ( ${currentQuizMorse} )`;
-            } else { document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！'; }
+                document.getElementById('answerBox').style.color = "#f57c00"; // 橘色
+            } else { 
+                document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！'; 
+            }
         }
     </script>
 </body>
