@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>童軍摩斯密碼練習器 (音效回饋版)</title>
+    <title>童軍摩斯密碼練習器 (防連點穩健版)</title>
     <style>
         /* --- 視覺設計 --- */
         body { 
@@ -74,24 +74,14 @@
         }
         .guess-input:focus { box-shadow: 0 0 8px rgba(46, 125, 50, 0.5); }
 
-        /* 新增：答錯時的抖動動畫 */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-8px); }
             50% { transform: translateX(8px); }
             75% { transform: translateX(-8px); }
         }
-        .shake-error {
-            animation: shake 0.4s;
-            border-color: #d32f2f !important;
-            background-color: #ffebee;
-        }
-        /* 新增：答對時的視覺回饋 */
-        .success-glow {
-            border-color: #2e7d32 !important;
-            background-color: #e8f5e9;
-            box-shadow: 0 0 15px rgba(46, 125, 50, 0.4);
-        }
+        .shake-error { animation: shake 0.4s; border-color: #d32f2f !important; background-color: #ffebee; }
+        .success-glow { border-color: #2e7d32 !important; background-color: #e8f5e9; box-shadow: 0 0 15px rgba(46, 125, 50, 0.4); }
 
         /* --- 發報按鈕專屬設計 --- */
         #telegraphKey {
@@ -194,6 +184,9 @@
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let audioUnlocked = false; 
 
+        // --- 防連點機制：全域播放號碼牌 ---
+        let currentPlaybackId = 0;
+
         function initAudioEngine() {
             if (audioUnlocked) return;
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -216,19 +209,14 @@
         document.addEventListener('touchstart', initAudioEngine);
         document.addEventListener('pointerdown', initAudioEngine);
 
-        // --- 新增：回饋音效函式 ---
         function playSuccessSound() {
             initAudioEngine();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             const osc = audioCtx.createOscillator();
             osc.connect(audioCtx.destination);
-            osc.type = 'sine'; // 圓潤的正弦波
-            
-            // 設定連續兩個高音 (叮-咚)
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz
-            osc.frequency.setValueAtTime(1318, audioCtx.currentTime + 0.1); // 1318Hz
-            
+            osc.type = 'sine'; 
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            osc.frequency.setValueAtTime(1318, audioCtx.currentTime + 0.1); 
             osc.start();
             osc.stop(audioCtx.currentTime + 0.25);
         }
@@ -236,39 +224,36 @@
         function playErrorSound() {
             initAudioEngine();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             const osc = audioCtx.createOscillator();
             osc.connect(audioCtx.destination);
-            osc.type = 'sawtooth'; // 帶點粗糙感的鋸齒波
-            
-            // 設定音調往下滑落 (噗~)
+            osc.type = 'sawtooth'; 
             osc.frequency.setValueAtTime(250, audioCtx.currentTime);
             osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.3);
-            
             osc.start();
             osc.stop(audioCtx.currentTime + 0.3);
         }
 
-
-        // --- 音效產生器邏輯 ---
         let continuousOscillator = null;
         function startContinuousTone() {
             initAudioEngine(); 
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
+            // 確保每次開啟前，先把舊的清掉，防止疊加
+            stopContinuousTone();
+
             continuousOscillator = audioCtx.createOscillator();
             continuousOscillator.type = 'sine'; 
             continuousOscillator.frequency.value = 600; 
             continuousOscillator.connect(audioCtx.destination); 
             continuousOscillator.start();
         }
+
         function stopContinuousTone() {
             if (continuousOscillator) {
-                continuousOscillator.stop(); continuousOscillator.disconnect(); continuousOscillator = null;
+                continuousOscillator.stop(); 
+                continuousOscillator.disconnect(); 
+                continuousOscillator = null;
             }
-        }
-        function playTone(durationMs) {
-            startContinuousTone(); setTimeout(stopContinuousTone, durationMs);
         }
 
         // --- 發報練習區邏輯 ---
@@ -276,6 +261,10 @@
         function startPress(e) {
             e.preventDefault(); if (isPressing) return;
             isPressing = true; pressStartTime = Date.now(); clearTimeout(signalTimeout);
+            
+            // 中斷任何正在自動播放的聲音
+            currentPlaybackId++; 
+            
             startContinuousTone(); document.getElementById('lightBox').classList.add('glow'); document.getElementById('telegraphKey').classList.add('pressed');
         }
         function endPress(e) {
@@ -297,16 +286,45 @@
             document.getElementById('manualOutputText').value = ""; currentSignal = ""; document.getElementById('currentSignalDisplay').innerText = "...";
         }
 
-        // --- 核心播放邏輯 ---
+        // --- 核心播放邏輯 (加入號碼牌中斷機制) ---
         async function playMorseString(morseStr) {
+            // 1. 每次呼叫，發放一張新的號碼牌
+            currentPlaybackId++;
+            const myPlaybackId = currentPlaybackId;
+            
             const lightBox = document.getElementById('lightBox');
+
+            // 確保開始前，關閉所有聲音與燈光
+            stopContinuousTone();
+            lightBox.classList.remove('glow');
+
             for (let i = 0; i < morseStr.length; i++) {
+                // 2. 檢查：如果號碼牌不符，代表有新指令進來了，立刻中斷！
+                if (myPlaybackId !== currentPlaybackId) return;
+
                 const char = morseStr[i];
                 if (char === '.' || char === '-') {
                     const duration = (char === '.') ? unitTime : unitTime * 3;
-                    lightBox.classList.add('glow'); playTone(duration);
-                    await sleep(duration); lightBox.classList.remove('glow'); await sleep(unitTime);
-                } else if (char === ' ') { await sleep(unitTime * 3); }
+                    
+                    lightBox.classList.add('glow'); 
+                    startContinuousTone(); // 直接打開聲音
+                    
+                    await sleep(duration); // 等待發聲時間
+                    
+                    // 3. 睡醒後再次檢查，中途有沒有人插隊？
+                    if (myPlaybackId !== currentPlaybackId) {
+                        stopContinuousTone();
+                        lightBox.classList.remove('glow');
+                        return;
+                    }
+
+                    lightBox.classList.remove('glow'); 
+                    stopContinuousTone(); // 直接關閉聲音
+
+                    await sleep(unitTime);
+                } else if (char === ' ') { 
+                    await sleep(unitTime * 3); 
+                }
             }
         }
 
@@ -327,7 +345,6 @@
             document.getElementById('answerBox').innerText = '聽/看信號中...';
             document.getElementById('answerBox').style.color = "#333";
             
-            // 清除之前的輸入與視覺狀態
             const guessInput = document.getElementById('userGuess');
             guessInput.value = '';
             guessInput.classList.remove('shake-error', 'success-glow');
@@ -338,23 +355,25 @@
             currentQuizMorse = morseDict[currentQuizChar];
             
             await playMorseString(currentQuizMorse);
-            document.getElementById('answerBox').innerText = '播放完畢，請在上方輸入答案並檢查！';
             
-            // 自動把游標聚焦在輸入框，方便電腦版使用者直接打字
-            guessInput.focus();
+            // 確保播放完成（且沒有被中斷）才更改提示文字
+            if (currentQuizMorse !== '') {
+                document.getElementById('answerBox').innerText = '播放完畢，請在上方輸入答案並檢查！';
+                guessInput.focus();
+            }
         }
 
         async function replayQuiz() {
-            if (currentQuizMorse !== '') { await playMorseString(currentQuizMorse); }
+            if (currentQuizMorse !== '') { 
+                document.getElementById('answerBox').innerText = '重播信號中...';
+                await playMorseString(currentQuizMorse); 
+                document.getElementById('answerBox').innerText = '播放完畢，請在上方輸入答案並檢查！';
+            }
         }
 
-        // --- 更新：加入音效與視覺提示的檢查邏輯 ---
         function checkUserAnswer() {
             const guessInput = document.getElementById('userGuess');
-            
-            // 每次檢查前先移除之前的動畫狀態，確保能重複觸發
             guessInput.classList.remove('shake-error', 'success-glow');
-            // 強制重繪 (Reflow) 讓瀏覽器知道我們移除了 Class，這是一個 CSS 動畫小技巧
             void guessInput.offsetWidth; 
 
             if (currentQuizChar === '') {
@@ -372,17 +391,15 @@
             }
 
             if (userGuess === currentQuizChar) {
-                // 答對的處理
                 document.getElementById('answerBox').innerText = `🎉 答對了！答案正是 ${currentQuizChar} ( ${currentQuizMorse} )`; 
                 document.getElementById('answerBox').style.color = "#2e7d32"; 
-                guessInput.classList.add('success-glow'); // 加入發光特效
-                playSuccessSound(); // 播放成功音效
+                guessInput.classList.add('success-glow'); 
+                playSuccessSound(); 
             } else {
-                // 答錯的處理
                 document.getElementById('answerBox').innerText = `❌ 哎呀，猜錯了！再聽一次或重新修改答案吧。`; 
                 document.getElementById('answerBox').style.color = "#d32f2f"; 
-                guessInput.classList.add('shake-error'); // 加入抖動和紅底特效
-                playErrorSound(); // 播放錯誤音效
+                guessInput.classList.add('shake-error'); 
+                playErrorSound(); 
             }
         }
 
