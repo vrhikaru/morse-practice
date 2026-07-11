@@ -110,9 +110,11 @@
 
         <div id="TranslateTab" class="tab-content" style="display: block;">
             <p>輸入英數字來翻譯並播放聲光：</p>
-            <textarea id="inputText" placeholder="例如: SCOUT"></textarea>
-            <button class="action-btn" onclick="translateAndPlay()">翻譯並播放 (Play)</button>
-            <textarea id="outputText" placeholder="摩斯密碼..." readonly></textarea>
+            <textarea id="inputText" placeholder="例如: SCOUT" oninput="handleInput()"></textarea>
+            
+            <button class="action-btn" onclick="translateAndPlay()">▶️ 播放密碼</button>
+            
+            <textarea id="outputText" placeholder="密碼會即時翻譯在這裡..." readonly></textarea>
         </div>
 
         <div id="PracticeTab" class="tab-content">
@@ -158,10 +160,9 @@
         let currentPlaybackId = 0;
 
         function openTab(evt, tabName) {
-            // 【新增：切換分頁時的強制中斷機制】
-            currentPlaybackId++; // 抽一張新號碼牌，讓原本的播放迴圈自動失效
-            stopContinuousTone(); // 強制切斷當下的聲音
-            document.getElementById('lightBox').classList.remove('glow'); // 強制關閉燈光
+            currentPlaybackId++; 
+            stopContinuousTone(); 
+            document.getElementById('lightBox').classList.remove('glow'); 
 
             const tabContents = document.getElementsByClassName("tab-content");
             for (let i = 0; i < tabContents.length; i++) { tabContents[i].style.display = "none"; }
@@ -327,14 +328,35 @@
             }
         }
 
-        async function translateAndPlay() {
+        // --- 新增：處理輸入框文字改變時的動作 ---
+        function handleInput() {
+            // 1. 中斷目前的播放迴圈、聲音與燈光
+            currentPlaybackId++; 
+            stopContinuousTone();
+            document.getElementById('lightBox').classList.remove('glow');
+
+            // 2. 即時翻譯文字並更新到下方的方塊中
             const input = document.getElementById('inputText').value.toUpperCase();
             let result = '';
             for (let i = 0; i < input.length; i++) {
                 const char = input[i];
-                if (morseDict[char]) { result += morseDict[char] + ' '; } else if (char === ' ') { result += ' '; }
+                if (morseDict[char]) { 
+                    result += morseDict[char] + ' '; 
+                } else if (char === ' ' || char === '\n') { 
+                    result += char; // 保留空白與換行
+                }
             }
-            document.getElementById('outputText').value = result.trim(); await playMorseString(result.trim());
+            document.getElementById('outputText').value = result.trim();
+        }
+
+        // --- 更新：播放按鈕只需抓取現成的翻譯結果 ---
+        async function translateAndPlay() {
+            // 因為 handleInput() 已經即時翻譯好了，我們直接抓 outputText 來播放即可
+            const morseStr = document.getElementById('outputText').value.replace(/\n/g, ' '); // 播放時將換行當作空白處理
+            
+            if (morseStr !== "") {
+                await playMorseString(morseStr.trim());
+            }
         }
 
         // --- 聽讀測驗邏輯 ---
