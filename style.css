@@ -305,6 +305,14 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
 .question.listen { color: var(--sky); border-color: var(--sky); }
 .question.win { color: var(--amber); border-color: var(--amber); font-size: 24px; }
 
+/* 公布答案：上面大字元，下面密碼 */
+.question.reveal {
+  flex-direction: column; gap: 2px;
+  color: var(--strong); border-color: var(--pine-2); border-style: solid;
+}
+.question.reveal b { font-size: 56px; line-height: 1.1; letter-spacing: 2px; }
+.question.reveal span { font-size: 22px; letter-spacing: 5px; color: var(--muted); }
+
 .guess {
   display: block; width: 100%; max-width: 260px; margin: 4px auto 14px;
   padding: 12px; font-family: var(--mono); font-size: 30px; font-weight: 700;

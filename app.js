@@ -515,7 +515,12 @@ function checkAnswer() {
   if (correct) {
     guess.classList.add('ok');
     successSound();
-    say(`🎉 答對了！${S.quizChar} ＝ ${S.quizMorse}`, 'ok');
+    say('🎉 答對了！', 'ok');
+
+    // 解碼模式下，卡片原本只寫「這是哪個字元？」，答對也看不到答案 —— 補上
+    const q = $('questionDisplay');
+    q.className = 'question reveal';
+    q.innerHTML = `<b>${escapeHtml(S.quizChar)}</b><span class="mono">${S.quizMorse}</span>`;
 
     const koch = $('quizMode').value === 'koch';
     const auto = $('autoLevelKoch').checked;
@@ -551,16 +556,31 @@ function checkAnswer() {
   }
 }
 
-function showAnswer() {
+async function showAnswer() {
   if (!S.quizChar) { say('請先按「開始測驗」。', 'err'); return; }
   if (!S.quizScored) { S.total++; S.quizScored = true; }
   S.streak = 0;
   updateStats();
   updateKochLevel();
-  say(`💡 答案是 ${S.quizChar} ＝ ${S.quizMorse}（本題算答錯）`, 'info');
 
-  const me = quizToken;
-  setTimeout(() => { if (S.quizRunning && me === quizToken) nextQuestion(); }, 1800);
+  const me = ++quizToken;          // 取消這一題其他排程中的動作
+  const q = $('questionDisplay');
+  const guess = $('userGuess');
+
+  guess.value = '';
+  guess.classList.remove('err', 'ok');
+
+  // 直接把答案公布在大卡片上，而不是只寫在下面那行小字
+  q.className = 'question reveal';
+  q.innerHTML = `<b>${escapeHtml(S.quizChar)}</b><span class="mono">${S.quizMorse}</span>`;
+  say('💡 這題算答錯 — 順便聽一次正確的節奏', 'info');
+
+  // 已經公布答案了，節奏帶可以顯示
+  await playMorse(S.quizMorse, { showRibbon: true });
+  if (me !== quizToken) return;
+  await sleep(1200);               // 留時間看清楚
+  if (me !== quizToken) return;
+  if (S.quizRunning) nextQuestion();
 }
 
 function updateStats() {
