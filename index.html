@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>童軍摩斯密碼練習器</title>
+    <title>童軍摩斯密碼練習器 (自動晉級版)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,16 +12,25 @@
         
         <div class="control-panel">
             <div class="control-row">
-                <label for="dictSelect">📚 選擇密碼表：</label>
+                <label for="dictSelect">📚 密碼表：</label>
                 <select id="dictSelect" class="styled-select" onchange="switchDictionary()">
-                    <option value="standard">國際標準版 (僅英數字)</option>
-                    <option value="extended">擴充符號版 (加入標點符號)</option>
+                    <option value="standard">國際標準版 (英數字)</option>
+                    <option value="extended">擴充符號版 (+標點符號)</option>
                 </select>
             </div>
 
+            <div class="control-row">
+                <label for="freqSlider">🎵 聲音頻率：<span id="freqValue">600</span> Hz</label>
+                <input type="range" id="freqSlider" class="wpm-slider" min="300" max="1000" step="10" value="600" oninput="updateConfigs()">
+            </div>
+            <div class="control-row">
+                <label for="charWpmSlider">⚡ 字元速度 (Char WPM)：<span id="charWpmValue">20</span> WPM</label>
+                <input type="range" id="charWpmSlider" class="wpm-slider" min="5" max="40" value="20" oninput="updateConfigs()">
+            </div>
             <div class="control-row" style="margin-bottom: 5px;">
-                <label for="wpmSlider">⚙️ 播放與判定速度：<span id="wpmValue">10</span> WPM</label>
-                <input type="range" id="wpmSlider" class="wpm-slider" min="5" max="30" value="10" oninput="updateConfigs()">
+                <label for="overallWpmSlider">🐢 整體速度 (Farnsworth)：<span id="overallWpmValue">10</span> WPM</label>
+                <input type="range" id="overallWpmSlider" class="wpm-slider" min="5" max="40" value="10" oninput="updateConfigs()">
+                <p class="wpm-note">* 當整體速度低於字元速度時，將自動啟用 Farnsworth 演算法拉長字母間距。</p>
             </div>
             
             <div class="toggles">
@@ -50,44 +59,82 @@
         <div id="LearnTab" class="tab-content">
             <div class="practice-area">
                 <p>點擊下方字卡即可播放該字元的密碼！</p>
-                <div id="dictGrid" class="dict-grid">
-                    </div>
+                <div id="dictGrid" class="dict-grid"></div>
             </div>
         </div>
 
         <div id="PracticeTab" class="tab-content">
             <div class="practice-area">
-                <p>根據你的感官設定，感受密碼並猜測答案！</p>
-                <select id="quizMode" class="styled-select" style="margin-bottom: 15px;">
-                    <option value="all">🔀 全部混合</option>
-                    <option value="letters">🅰️ 僅英文字母</option>
-                    <option value="numbers">🔢 僅數字</option>
-                    <option value="symbols" id="optSymbols" style="display:none;">#️⃣ 僅標點符號</option>
-                </select>
-                <br>
+                
+                <div style="margin-bottom: 15px; border-bottom: 2px dashed #ccc; padding-bottom: 15px;">
+                    <label style="margin-right: 15px; font-weight: bold; cursor: pointer; font-size: 16px;">
+                        <input type="radio" name="pMode" id="modeDecode" checked onchange="switchPracticeMode()"> 🎧 聽讀解碼 (猜字母)
+                    </label>
+                    <label style="font-weight: bold; cursor: pointer; color: #2e7d32; font-size: 16px;">
+                        <input type="radio" name="pMode" id="modeEncode" onchange="switchPracticeMode()"> 👁️ 視覺編碼 (打密碼)
+                    </label>
+                </div>
+
+                <div id="practiceOptions">
+                    <p id="practiceHint" style="margin-top: 0; color: #1b5e20; font-weight: bold;">聆聽密碼，並輸入對應的字母！</p>
+                    <select id="quizMode" class="styled-select" style="margin-bottom: 15px;" onchange="handleQuizModeChange()">
+                        <option value="koch">⭐ Koch 柯赫學習法</option>
+                        <option value="all">🔀 全部混合</option>
+                        <option value="letters">🅰️ 僅英文字母</option>
+                        <option value="numbers">🔢 僅數字</option>
+                        <option value="symbols" id="optSymbols" style="display:none;">#️⃣ 僅標點符號</option>
+                    </select>
+                </div>
+
+                <div id="kochPanel" style="display: block; background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #c8e6c9;">
+                    <label style="font-weight: bold; color: #2e7d32;">🏆 Koch 等級：<span id="kochLevelVal">1</span></label><br>
+                    <input type="range" id="kochLevelSlider" class="wpm-slider" min="1" max="39" value="1" oninput="updateKochLevel()">
+                    
+                    <div style="margin-top: 10px;">
+                        <label style="font-size: 15px; font-weight: bold; color: #1565c0; cursor: pointer;">
+                            <input type="checkbox" id="autoLevelKoch" checked> 📈 啟動自動晉級 (連對 5 題自動升級)
+                        </label>
+                    </div>
+                </div>
+
                 <button class="action-btn" onclick="generateRandomQuiz()">🎲 隨機出題</button>
-                <button class="action-btn" onclick="replayQuiz()">🔄 再播一次</button>
-                <br>
+                <button id="btnReplay" class="action-btn" onclick="replayQuiz()">🔄 再播一次</button>
+                
+                <div id="questionDisplay" class="question-display">請點擊上方「隨機出題」</div>
+                
                 <input type="text" id="userGuess" class="guess-input" maxlength="1" placeholder="?">
-                <button class="action-btn" onclick="checkUserAnswer()" style="background-color: #1976d2;">✅ 檢查</button>
-                <button class="action-btn" onclick="showAnswer()" style="background-color: #757575;">👀 偷看</button>
-                <div id="answerBox">請點擊上方「隨機出題」開始</div>
+                
+                <div id="morseKeypad" class="morse-keypad" style="display: none;">
+                    <button class="morse-btn btn-dot" onclick="appendMorse('.')">・ (滴)</button>
+                    <button class="morse-btn btn-dash" onclick="appendMorse('-')">－ (答)</button>
+                    <button class="morse-btn btn-del" onclick="backspaceMorse()">⌫</button>
+                </div>
+
+                <br>
+                <button class="action-btn" onclick="checkUserAnswer()" style="background-color: #1976d2;">✅ 檢查答案</button>
+                <button id="btnShowAnswer" class="action-btn" onclick="showAnswer()" style="background-color: #757575;">👀 偷看答案</button>
+                
+                <div id="answerBox" style="margin-top: 15px; font-size: 18px; font-weight: bold; min-height: 27px;"></div>
+                
+                <div class="stats-container">
+                    <div id="statsBox" class="stats-box">📊 答對: 0 / 總數: 0 (正確率: 0%) | 🔥 連對: 0</div>
+                    <button class="action-btn reset-btn" onclick="resetStats()">歸零</button>
+                </div>
             </div>
         </div>
 
         <div id="ManualTab" class="tab-content">
             <div class="practice-area">
-                <p>依據你設定的 WPM 速度來敲擊按鈕</p>
+                <p>請依據你設定的速度來敲擊按鈕</p>
                 <button id="telegraphKey" onpointerdown="startPress(event)" onpointerup="endPress(event)" onpointerleave="endPress(event)">發報鍵</button>
                 <div id="currentSignalDisplay">...</div>
                 <div id="currentWpmDisplay">發送速率：-- WPM</div>
                 <textarea id="manualOutputText" placeholder="你發送的文字會顯示在這裡..." readonly style="height: 60px;"></textarea>
-                <button class="action-btn" onclick="addSpace()">➕ 空白</button>
+                <button class="action-btn" onclick="addSpace()">➕ 空白 / 斜線</button>
                 <button class="action-btn" onclick="clearManualOutput()" style="background-color: #757575;">🗑️ 清除</button>
             </div>
         </div>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
