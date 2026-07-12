@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#123A2F">
 <meta name="color-scheme" content="light dark">
 <title>童軍摩斯密碼練習器</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
@@ -79,10 +79,6 @@
       </div>
       <p id="practiceHint" class="hint hint-strong">聆聽密碼聲音，輸入對應的字元。</p>
 
-      <div class="btn-row">
-        <button id="btnStartQuiz" class="btn btn-primary btn-block">▶️ 開始測驗</button>
-        <button id="btnStopQuiz" class="btn btn-danger btn-block" hidden>⏹️ 結束測驗</button>
-      </div>
 
       <label class="field-label" for="quizMode">題庫範圍</label>
       <select id="quizMode" class="select">
@@ -107,6 +103,11 @@
       </div>
 
       <div id="questionDisplay" class="question">尚未開始</div>
+	  
+	   <div class="btn-row">
+        <button id="btnStartQuiz" class="btn btn-primary btn-block">▶️ 開始測驗</button>
+        <button id="btnStopQuiz" class="btn btn-danger btn-block" hidden>⏹️ 結束測驗</button>
+      </div>
 
       <div class="btn-row btn-row-center">
         <button id="btnReplay" class="btn btn-sky">🔁 再聽一次</button>
