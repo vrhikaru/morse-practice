@@ -215,6 +215,7 @@ function saveSettings() {
       dict: S.dictName, freq: S.freq, charWpm: S.charWpm, overallWpm: S.overallWpm,
       sound: S.sound, light: S.light, vibrate: S.vibrate,
       koch: +$('kochLevelSlider').value, quizMode: $('quizMode').value,
+      theme: $('themeSelect').value,
     }));
   } catch (e) { /* 無痕模式或不支援，略過 */ }
 }
@@ -232,6 +233,19 @@ function loadSettings() {
   $('cfgVibrate').checked = !!d.vibrate;
   if (d.quizMode) $('quizMode').value = d.quizMode;
   if (d.koch) $('kochLevelSlider').value = d.koch;
+  if (d.theme) $('themeSelect').value = d.theme;
+}
+
+function applyTheme(v) {
+  const root = document.documentElement;
+  if (v === 'auto') root.removeAttribute('data-theme');
+  else root.dataset.theme = v;
+
+  // 讓手機的網址列 / 狀態列顏色也跟著換
+  const dark = v === 'dark' ||
+    (v === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = dark ? '#0D2A22' : '#123A2F';
 }
 
 function updateConfigs() {
@@ -678,6 +692,11 @@ function bind() {
   ['cfgSound', 'cfgLight', 'cfgVibrate'].forEach((id) =>
     $(id).addEventListener('change', updateConfigs));
   $('dictSelect').addEventListener('change', switchDictionary);
+  $('themeSelect').addEventListener('change', () => { applyTheme($('themeSelect').value); saveSettings(); });
+  // 「跟隨系統」時，使用者在手機上切換深淺色要即時反應
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ($('themeSelect').value === 'auto') applyTheme('auto');
+  });
   $('btnTestSignal').addEventListener('click', () => playMorse('... --- ...'));
 
   // 翻譯
@@ -799,6 +818,7 @@ function bind() {
 /* ---------- 13. 啟動 ---------- */
 function init() {
   loadSettings();
+  applyTheme($('themeSelect').value);
   bind();
   updateConfigs();          // ← 舊版漏掉這行，Farnsworth 間隔一開始不會生效
   switchDictionary();

@@ -1,15 +1,15 @@
-/* ============================================================
-   童軍摩斯密碼練習器 — 版面樣式
-   配色：營地綠紙 + 訊號燈琥珀
-   ============================================================ */
-
+/* ---------- 色彩 ----------
+   --pine / --pine-2 : 拿來當「底色」的深綠（上面放白字）
+   --strong / --accent : 拿來當「文字」的綠（放在底色上）
+   兩者必須分開，否則深色模式會出現黑字黑底。
+------------------------------------------------ */
 :root {
-  /* 告訴瀏覽器「深淺色我自己處理」。少了這行，Chrome Android 的
-     自動深色模式會擅自把整頁反色，導致下拉選單等元件對比度爆掉。 */
   color-scheme: light dark;
 
-  --pine:      #123a2f;
-  --pine-2:    #1d5c48;
+  --pine:      #123a2f;   /* 底色用 */
+  --pine-2:    #1d5c48;   /* 底色用（按鈕） */
+  --strong:    #123a2f;   /* 文字用：標題、數字 */
+  --accent:    #1d5c48;   /* 文字用：標籤、次要強調 */
   --pine-soft: #d8e6dc;
   --paper:     #e9efe7;
   --card:      #ffffff;
@@ -31,19 +31,43 @@
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
 }
 
+/* 深色配色（單獨抽出來，讓「跟隨系統」和「手動選深色」共用） */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --pine:      #0d2a22;
-    --pine-2:    #2e8266;
+    --pine-2:    #2b7a60;
+    --strong:    #8fe0c0;
+    --accent:    #6fd3ac;
     --pine-soft: #1c3a31;
     --paper:     #101815;
     --card:      #17231e;
     --ink:       #e7efe9;
     --muted:     #9bafa4;
     --line:      #2a3c34;
+    --amber:     #ffb733;
+    --sky:       #5aa9d8;
+    --rust:      #e0645a;
     --shadow: 0 2px 4px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --pine:      #0d2a22;
+  --pine-2:    #2b7a60;
+  --strong:    #8fe0c0;
+  --accent:    #6fd3ac;
+  --pine-soft: #1c3a31;
+  --paper:     #101815;
+  --card:      #17231e;
+  --ink:       #e7efe9;
+  --muted:     #9bafa4;
+  --line:      #2a3c34;
+  --amber:     #ffb733;
+  --sky:       #5aa9d8;
+  --rust:      #e0645a;
+  --shadow: 0 2px 4px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 
@@ -146,7 +170,7 @@ option {
 /* ---------- 表單元件 ---------- */
 .field-label {
   display: flex; align-items: center; justify-content: space-between;
-  margin: 14px 0 6px; font-size: 14px; font-weight: 700; color: var(--pine-2);
+  margin: 14px 0 6px; font-size: 14px; font-weight: 700; color: var(--accent);
 }
 textarea, .select, .search {
   width: 100%; padding: 12px 14px;
@@ -171,14 +195,14 @@ textarea:focus, .select:focus, .search:focus, .guess:focus {
   -webkit-text-fill-color: var(--ink);
   background-color: var(--card);
   /* appearance:none 會把原生箭頭一起拿掉，自己畫一個回來 */
-  background-image: linear-gradient(45deg, transparent 50%, var(--pine-2) 50%),
-                    linear-gradient(135deg, var(--pine-2) 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, var(--accent) 50%),
+                    linear-gradient(135deg, var(--accent) 50%, transparent 50%);
   background-size: 7px 7px, 7px 7px;
   background-position: right 20px center, right 13px center;
   background-repeat: no-repeat;
 }
 .hint { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
-.hint-strong { color: var(--pine-2); font-weight: 600; }
+.hint-strong { color: var(--accent); font-weight: 600; }
 code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px; border-radius: 4px; }
 
 /* ---------- 按鈕 ---------- */
@@ -194,7 +218,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
 .btn-primary { background: var(--pine-2); }
 .btn-danger  { background: var(--rust); }
 .btn-sky     { background: var(--sky); }
-.btn-ghost   { background: var(--card); color: var(--pine-2); border: 2px solid var(--line); }
+.btn-ghost   { background: var(--card); color: var(--accent); border: 2px solid var(--line); }
 .btn-block   { width: 100%; flex: none; }
 .btn-lg      { min-height: 56px; font-size: 18px; }
 .btn-row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
@@ -204,7 +228,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
 
 .btn-mini {
   padding: 4px 10px; font-size: 12px; font-weight: 700;
-  color: var(--pine-2); background: var(--card);
+  color: var(--accent); background: var(--card);
   border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
 }
 .btn-mini-danger { color: #fff; background: var(--rust); border-color: var(--rust); }
@@ -217,10 +241,10 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg label {
   flex: 1; padding: 10px 8px; text-align: center; cursor: pointer;
-  font-size: 15px; font-weight: 700; color: var(--pine-2);
+  font-size: 15px; font-weight: 700; color: var(--accent);
   border-radius: 999px; transition: .15s;
 }
-.seg input:checked + label { background: var(--card); color: var(--pine); box-shadow: var(--shadow); }
+.seg input:checked + label { background: var(--card); color: var(--strong); box-shadow: var(--shadow); }
 .seg input:focus-visible + label { outline: 3px solid var(--amber); }
 
 /* ---------- 設定 ---------- */
@@ -228,7 +252,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   margin: 14px 0; padding: 14px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
 }
-.setting > label { display: block; font-size: 15px; font-weight: 700; color: var(--pine-2); }
+.setting > label { display: block; font-size: 15px; font-weight: 700; color: var(--accent); }
 .setting b { color: var(--amber); font-size: 17px; }
 .slider { width: 100%; margin: 10px 0 0; accent-color: var(--pine-2); height: 28px; }
 .toggles { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
@@ -254,8 +278,8 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   transition: .15s;
 }
 .card:hover { border-color: var(--pine-2); transform: translateY(-2px); box-shadow: var(--shadow); }
-.card.playing { border-color: var(--amber); background: #fff7e3; }
-.card-char { font-size: 22px; font-weight: 800; color: var(--pine); }
+.card.playing { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, var(--card)); }
+.card-char { font-size: 22px; font-weight: 800; color: var(--strong); }
 .card-morse { margin-top: 4px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
 .empty { padding: 24px; text-align: center; color: var(--muted); }
 
@@ -265,8 +289,8 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   background: var(--pine-soft); border: 1px solid var(--line); border-radius: var(--r-md);
 }
 .koch-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.koch-head strong { color: var(--pine); font-size: 15px; }
-.koch-chars { font-size: 13px; color: var(--pine-2); text-align: right; word-break: break-all; }
+.koch-head strong { color: var(--strong); font-size: 15px; }
+.koch-chars { font-size: 13px; color: var(--accent); text-align: right; word-break: break-all; }
 .progress { height: 8px; margin-top: 10px; background: var(--card); border-radius: 999px; overflow: hidden; }
 .progress-bar { height: 100%; width: 0%; background: var(--amber); border-radius: 999px; transition: width .3s; }
 
@@ -277,7 +301,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   font-size: 22px; font-weight: 700; text-align: center; color: var(--muted);
   background: var(--card); border: 3px dashed var(--line); border-radius: var(--r-lg);
 }
-.question.big { font-size: 68px; letter-spacing: 4px; color: var(--pine); border-color: var(--pine-2); border-style: solid; }
+.question.big { font-size: 68px; letter-spacing: 4px; color: var(--strong); border-color: var(--pine-2); border-style: solid; }
 .question.listen { color: var(--sky); border-color: var(--sky); }
 .question.win { color: var(--amber); border-color: var(--amber); font-size: 24px; }
 
@@ -288,8 +312,8 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   color: var(--ink); background: var(--card);
   border: 3px solid var(--pine-2); border-radius: var(--r-md); outline: none;
 }
-.guess.err { border-color: var(--rust); background: #fdecea; animation: shake .35s; }
-.guess.ok  { border-color: var(--pine-2); background: #e7f4ec; box-shadow: 0 0 0 6px rgba(29,92,72,.15); }
+.guess.err { border-color: var(--rust); background: color-mix(in srgb, var(--rust) 12%, var(--card)); animation: shake .35s; }
+.guess.ok  { border-color: var(--pine-2); background: color-mix(in srgb, var(--pine-2) 14%, var(--card)); box-shadow: 0 0 0 6px rgba(29,92,72,.15); }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
 
 .keypad { display: flex; gap: 10px; margin: 0 0 14px; }
@@ -307,7 +331,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
 .key-del  { background: #6b7a72; font-size: 22px; }
 
 .answer { min-height: 30px; margin: 12px 0; font-size: 16px; font-weight: 700; text-align: center; }
-.answer.ok   { color: var(--pine-2); }
+.answer.ok   { color: var(--accent); }
 .answer.err  { color: var(--rust); }
 .answer.info { color: var(--amber); }
 
@@ -317,7 +341,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
 }
 .stat { flex: 1; min-width: 62px; text-align: center; }
-.stat span { display: block; font-size: 20px; font-weight: 800; color: var(--pine); }
+.stat span { display: block; font-size: 20px; font-weight: 800; color: var(--strong); }
 .stat small { font-size: 11px; color: var(--muted); }
 .stat-fire span { color: var(--amber); }
 
@@ -343,7 +367,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
 }
 .readout-item small { font-size: 11px; color: var(--muted); }
-.readout-big { margin-top: 2px; font-size: 24px; font-weight: 800; letter-spacing: 3px; color: var(--pine); min-height: 30px; }
+.readout-big { margin-top: 2px; font-size: 24px; font-weight: 800; letter-spacing: 3px; color: var(--strong); min-height: 30px; }
 
 /* ---------- 底部導覽 ---------- */
 .tabbar {
@@ -361,7 +385,7 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   cursor: pointer;
 }
 .tab span { font-size: 21px; line-height: 1; }
-.tab.is-active { color: var(--pine); background: var(--pine-soft); }
+.tab.is-active { color: var(--strong); background: var(--pine-soft); }
 
 @media (min-width: 700px) {
   .tabbar { position: static; margin: 16px 0 0; border-radius: var(--r-md); border: 1px solid var(--line); }

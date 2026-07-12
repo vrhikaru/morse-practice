@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#123A2F">
 <meta name="color-scheme" content="light dark">
 <title>童軍摩斯密碼練習器</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
@@ -164,6 +164,13 @@
 
     <!-- ========== 設定 ========== -->
     <section id="SettingsTab" class="panel">
+      <label class="field-label" for="themeSelect">🌗 主題</label>
+      <select id="themeSelect" class="select">
+        <option value="auto">🔄 跟隨手機系統</option>
+        <option value="light">☀️ 淺色（日間 / 戶外）</option>
+        <option value="dark">🌙 深色（夜間 / 營火）</option>
+      </select>
+
       <label class="field-label" for="dictSelect">📚 密碼表</label>
       <select id="dictSelect" class="select">
         <option value="standard">國際標準版（英文字母＋數字）</option>
@@ -209,6 +216,6 @@
 
 </div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
