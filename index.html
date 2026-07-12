@@ -4,433 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>童軍摩斯密碼練習器</title>
-    <style>
-        /* --- 視覺設計 --- */
-        body { 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background-color: #f0f7f4; 
-            padding: 20px; 
-            text-align: center; 
-            color: #333;
-            touch-action: manipulation; 
-            user-select: none;
-            -webkit-tap-highlight-color: transparent; 
-        }
-        .container { 
-            max-width: 600px; 
-            margin: auto; 
-            background: white; 
-            padding: 20px 30px 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
-        }
-        h1 { color: #2e7d32; margin-bottom: 10px; }
-        
-        /* 信號燈 */
-        #lightBox {
-            width: 80px; height: 80px; background-color: #555; 
-            border-radius: 50%; margin: 15px auto 25px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5) inset;
-            transition: background-color 0.05s;
-        }
-        .glow {
-            background-color: #ffeb3b !important; 
-            box-shadow: 0 0 30px #ffeb3b, 0 0 10px rgba(0,0,0,0.2) inset !important;
-        }
-
-        /* --- 分頁按鈕 --- */
-        .tab-container { display: flex; border-bottom: 2px solid #2e7d32; margin-bottom: 20px; }
-        .tab-button {
-            flex: 1; background-color: #e8f5e9; color: #2e7d32; border: none;
-            padding: 10px; font-size: 16px; font-weight: bold; cursor: pointer;
-            transition: 0.3s; border-radius: 8px 8px 0 0; 
-        }
-        .tab-button:hover { background-color: #c8e6c9; }
-        .tab-button.active { background-color: #2e7d32; color: white; }
-
-        .tab-content { display: none; animation: fadeIn 0.5s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* --- 內部元件設計 --- */
-        textarea { 
-            width: 100%; height: 80px; margin: 10px 0; padding: 10px; 
-            font-size: 16px; box-sizing: border-box; border: 2px solid #ccc; border-radius: 8px;
-        }
-        .action-btn { 
-            background-color: #2e7d32; color: white; border: none; 
-            padding: 10px 15px; font-size: 16px; border-radius: 8px; cursor: pointer; margin: 5px;
-        }
-        .action-btn:hover { background-color: #1b5e20; }
-        
-        .practice-area { background-color: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
-        .select-mode { margin-bottom: 15px; font-size: 16px; }
-        select { padding: 8px; font-size: 16px; border-radius: 6px; border: 2px solid #2e7d32; }
-        #answerBox { font-size: 20px; font-weight: bold; margin-top: 15px; min-height: 35px; color: #333; transition: 0.3s; }
-
-        .guess-input {
-            width: 80px; font-size: 24px; padding: 10px; margin: 15px 0;
-            text-align: center; text-transform: uppercase;
-            border: 2px solid #2e7d32; border-radius: 8px; outline: none; transition: 0.2s;
-        }
-        .guess-input:focus { box-shadow: 0 0 8px rgba(46, 125, 50, 0.5); }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            50% { transform: translateX(8px); }
-            75% { transform: translateX(-8px); }
-        }
-        .shake-error { animation: shake 0.4s; border-color: #d32f2f !important; background-color: #ffebee; }
-        .success-glow { border-color: #2e7d32 !important; background-color: #e8f5e9; box-shadow: 0 0 15px rgba(46, 125, 50, 0.4); }
-
-        /* --- 發報按鈕專屬設計 --- */
-        #telegraphKey {
-            width: 150px; height: 150px; background-color: #d32f2f; 
-            color: white; border: none; border-radius: 50%; font-size: 24px; 
-            font-weight: bold; cursor: pointer; margin: 20px auto; 
-            box-shadow: 0 8px 0 #b71c1c; 
-            transition: transform 0.05s, box-shadow 0.05s; display: block;
-        }
-        #telegraphKey:active, #telegraphKey.pressed {
-            transform: translateY(8px); box-shadow: 0 0px 0 #b71c1c;
-        }
-        #currentSignalDisplay { font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1976d2; min-height: 40px; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <h1>⛺ 童軍摩斯密碼練習器</h1>
+        
+        <div class="control-panel">
+            <div class="control-row">
+                <label for="dictSelect">📚 選擇密碼表：</label>
+                <select id="dictSelect" class="styled-select" onchange="switchDictionary()">
+                    <option value="standard">國際標準版 (僅英數字)</option>
+                    <option value="extended">擴充符號版 (加入標點符號)</option>
+                </select>
+            </div>
+
+            <div class="control-row" style="margin-bottom: 5px;">
+                <label for="wpmSlider">⚙️ 播放與判定速度：<span id="wpmValue">10</span> WPM</label>
+                <input type="range" id="wpmSlider" class="wpm-slider" min="5" max="30" value="10" oninput="updateConfigs()">
+            </div>
+            
+            <div class="toggles">
+                <label class="toggle-item"><input type="checkbox" id="cfgSound" checked onchange="updateConfigs()"> 🔊 聲音</label>
+                <label class="toggle-item"><input type="checkbox" id="cfgLight" checked onchange="updateConfigs()"> 💡 燈光</label>
+                <label class="toggle-item"><input type="checkbox" id="cfgVibrate" onchange="updateConfigs()"> 📳 震動</label>
+            </div>
+        </div>
+
         <div id="lightBox"></div>
 
         <div class="tab-container">
-            <button class="tab-button active" onclick="openTab(event, 'TranslateTab')">📝 密碼翻譯</button>
-            <button class="tab-button" onclick="openTab(event, 'PracticeTab')">🎯 聽讀練習</button>
-            <button class="tab-button" onclick="openTab(event, 'ManualTab')">🖐️ 發報練習</button>
+            <button class="tab-button active" onclick="openTab(event, 'TranslateTab')">📝 翻譯</button>
+            <button class="tab-button" onclick="openTab(event, 'LearnTab')">📖 學習</button>
+            <button class="tab-button" onclick="openTab(event, 'PracticeTab')">🎯 測驗</button>
+            <button class="tab-button" onclick="openTab(event, 'ManualTab')">🖐️ 發報</button>
         </div>
 
         <div id="TranslateTab" class="tab-content" style="display: block;">
-            <p>輸入英數字來翻譯並播放聲光：</p>
-            <textarea id="inputText" placeholder="例如: SCOUT" oninput="handleInput()"></textarea>
-            
+            <p>輸入文字即時翻譯，並可點擊播放：</p>
+            <textarea id="inputText" placeholder="請輸入文字..." oninput="handleInput()"></textarea>
             <button class="action-btn" onclick="translateAndPlay()">▶️ 播放密碼</button>
-            
             <textarea id="outputText" placeholder="密碼會即時翻譯在這裡..." readonly></textarea>
+        </div>
+
+        <div id="LearnTab" class="tab-content">
+            <div class="practice-area">
+                <p>點擊下方字卡即可播放該字元的密碼！</p>
+                <div id="dictGrid" class="dict-grid">
+                    </div>
+            </div>
         </div>
 
         <div id="PracticeTab" class="tab-content">
             <div class="practice-area">
-                <p>仔細看燈光或聽聲音，把聽到的字母或數字打出來！</p>
-                <div class="select-mode">
-                    <label for="quizMode">選擇題型：</label>
-                    <select id="quizMode">
-                        <option value="mixed">🔀 混合 (字母 + 數字)</option>
-                        <option value="letters">🅰️ 僅英文字母</option>
-                        <option value="numbers">🔢 僅數字</option>
-                    </select>
-                </div>
-                
+                <p>根據你的感官設定，感受密碼並猜測答案！</p>
+                <select id="quizMode" class="styled-select" style="margin-bottom: 15px;">
+                    <option value="all">🔀 全部混合</option>
+                    <option value="letters">🅰️ 僅英文字母</option>
+                    <option value="numbers">🔢 僅數字</option>
+                    <option value="symbols" id="optSymbols" style="display:none;">#️⃣ 僅標點符號</option>
+                </select>
+                <br>
                 <button class="action-btn" onclick="generateRandomQuiz()">🎲 隨機出題</button>
-                <button class="action-btn" onclick="replayQuiz()">🔄 再聽一次</button>
-                
+                <button class="action-btn" onclick="replayQuiz()">🔄 再播一次</button>
                 <br>
                 <input type="text" id="userGuess" class="guess-input" maxlength="1" placeholder="?">
-                <br>
-                <button class="action-btn" onclick="checkUserAnswer()" style="background-color: #1976d2;">✅ 檢查答案</button>
-                <button class="action-btn" onclick="showAnswer()" style="background-color: #757575;">👀 偷看答案</button>
-
-                <div id="answerBox">請點擊上方「隨機出題」開始測驗</div>
+                <button class="action-btn" onclick="checkUserAnswer()" style="background-color: #1976d2;">✅ 檢查</button>
+                <button class="action-btn" onclick="showAnswer()" style="background-color: #757575;">👀 偷看</button>
+                <div id="answerBox">請點擊上方「隨機出題」開始</div>
             </div>
         </div>
 
         <div id="ManualTab" class="tab-content">
             <div class="practice-area">
-                <p>請短按 (滴) 或長按 (答) 下方的紅色按鈕</p>
+                <p>依據你設定的 WPM 速度來敲擊按鈕</p>
                 <button id="telegraphKey" onpointerdown="startPress(event)" onpointerup="endPress(event)" onpointerleave="endPress(event)">發報鍵</button>
                 <div id="currentSignalDisplay">...</div>
-                <p>翻譯結果：</p>
+                <div id="currentWpmDisplay">發送速率：-- WPM</div>
                 <textarea id="manualOutputText" placeholder="你發送的文字會顯示在這裡..." readonly style="height: 60px;"></textarea>
-                <button class="action-btn" onclick="addSpace()">➕ 新增空白</button>
-                <button class="action-btn" onclick="clearManualOutput()" style="background-color: #757575;">🗑️ 清除內容</button>
+                <button class="action-btn" onclick="addSpace()">➕ 空白</button>
+                <button class="action-btn" onclick="clearManualOutput()" style="background-color: #757575;">🗑️ 清除</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- 全域播放號碼牌 ---
-        let currentPlaybackId = 0;
-
-        function openTab(evt, tabName) {
-            currentPlaybackId++; 
-            stopContinuousTone(); 
-            document.getElementById('lightBox').classList.remove('glow'); 
-
-            const tabContents = document.getElementsByClassName("tab-content");
-            for (let i = 0; i < tabContents.length; i++) { tabContents[i].style.display = "none"; }
-            const tabButtons = document.getElementsByClassName("tab-button");
-            for (let i = 0; i < tabButtons.length; i++) { tabButtons[i].classList.remove("active"); }
-            document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.classList.add("active");
-        }
-
-        const morseDict = {
-            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
-            'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
-            'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
-            'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
-            'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
-            '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
-            '8': '---..', '9': '----.'
-        };
-        const textDict = {};
-        for (const [key, value] of Object.entries(morseDict)) { textDict[value] = key; }
-
-        const letterKeys = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
-        const numberKeys = ['0','1','2','3','4','5','6','7','8','9'];
-        const mixedKeys = [...letterKeys, ...numberKeys];
-
-        let audioCtx;
-        const unitTime = 120; 
-        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        let audioUnlocked = false; 
-
-        function initAudioEngine() {
-            if (audioUnlocked) return;
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!audioCtx) audioCtx = new AudioContext();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = 0; 
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.001);
-
-            audioUnlocked = true; 
-            document.removeEventListener('touchstart', initAudioEngine);
-            document.removeEventListener('pointerdown', initAudioEngine);
-        }
-
-        document.addEventListener('touchstart', initAudioEngine);
-        document.addEventListener('pointerdown', initAudioEngine);
-
-        function playSuccessSound() {
-            initAudioEngine();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            osc.connect(audioCtx.destination);
-            osc.type = 'sine'; 
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
-            osc.frequency.setValueAtTime(1318, audioCtx.currentTime + 0.1); 
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.25);
-        }
-
-        function playErrorSound() {
-            initAudioEngine();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            osc.connect(audioCtx.destination);
-            osc.type = 'sawtooth'; 
-            osc.frequency.setValueAtTime(250, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.3);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-        }
-
-        let continuousOscillator = null;
-        function startContinuousTone() {
-            initAudioEngine(); 
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            stopContinuousTone();
-
-            continuousOscillator = audioCtx.createOscillator();
-            continuousOscillator.type = 'sine'; 
-            continuousOscillator.frequency.value = 600; 
-            continuousOscillator.connect(audioCtx.destination); 
-            continuousOscillator.start();
-        }
-
-        function stopContinuousTone() {
-            if (continuousOscillator) {
-                continuousOscillator.stop(); 
-                continuousOscillator.disconnect(); 
-                continuousOscillator = null;
-            }
-        }
-
-        // --- 發報練習區邏輯 ---
-        let pressStartTime = 0; let isPressing = false; let currentSignal = ""; let signalTimeout = null; 
-        function startPress(e) {
-            e.preventDefault(); if (isPressing) return;
-            isPressing = true; pressStartTime = Date.now(); clearTimeout(signalTimeout);
-            
-            currentPlaybackId++; 
-            
-            startContinuousTone(); document.getElementById('lightBox').classList.add('glow'); document.getElementById('telegraphKey').classList.add('pressed');
-        }
-        function endPress(e) {
-            e.preventDefault(); if (!isPressing) return;
-            isPressing = false; stopContinuousTone(); document.getElementById('lightBox').classList.remove('glow'); document.getElementById('telegraphKey').classList.remove('pressed');
-            const duration = Date.now() - pressStartTime;
-            if (duration < 200) { currentSignal += "."; } else { currentSignal += "-"; }
-            document.getElementById('currentSignalDisplay').innerText = currentSignal;
-            signalTimeout = setTimeout(() => { processSignal(); }, 600);
-        }
-        function processSignal() {
-            if (currentSignal === "") return;
-            const translatedChar = textDict[currentSignal] || "?";
-            document.getElementById('manualOutputText').value += translatedChar;
-            currentSignal = ""; document.getElementById('currentSignalDisplay').innerText = "...";
-        }
-        function addSpace() { document.getElementById('manualOutputText').value += " "; }
-        function clearManualOutput() {
-            document.getElementById('manualOutputText').value = ""; currentSignal = ""; document.getElementById('currentSignalDisplay').innerText = "...";
-        }
-
-        // --- 核心播放邏輯 ---
-        async function playMorseString(morseStr) {
-            currentPlaybackId++;
-            const myPlaybackId = currentPlaybackId;
-            
-            const lightBox = document.getElementById('lightBox');
-
-            stopContinuousTone();
-            lightBox.classList.remove('glow');
-
-            for (let i = 0; i < morseStr.length; i++) {
-                if (myPlaybackId !== currentPlaybackId) return;
-
-                const char = morseStr[i];
-                if (char === '.' || char === '-') {
-                    const duration = (char === '.') ? unitTime : unitTime * 3;
-                    
-                    lightBox.classList.add('glow'); 
-                    startContinuousTone(); 
-                    
-                    await sleep(duration); 
-                    
-                    if (myPlaybackId !== currentPlaybackId) {
-                        stopContinuousTone();
-                        lightBox.classList.remove('glow');
-                        return;
-                    }
-
-                    lightBox.classList.remove('glow'); 
-                    stopContinuousTone(); 
-
-                    await sleep(unitTime);
-                } else if (char === ' ') { 
-                    await sleep(unitTime * 3); 
-                }
-            }
-        }
-
-        // --- 新增：處理輸入框文字改變時的動作 ---
-        function handleInput() {
-            // 1. 中斷目前的播放迴圈、聲音與燈光
-            currentPlaybackId++; 
-            stopContinuousTone();
-            document.getElementById('lightBox').classList.remove('glow');
-
-            // 2. 即時翻譯文字並更新到下方的方塊中
-            const input = document.getElementById('inputText').value.toUpperCase();
-            let result = '';
-            for (let i = 0; i < input.length; i++) {
-                const char = input[i];
-                if (morseDict[char]) { 
-                    result += morseDict[char] + ' '; 
-                } else if (char === ' ' || char === '\n') { 
-                    result += char; // 保留空白與換行
-                }
-            }
-            document.getElementById('outputText').value = result.trim();
-        }
-
-        // --- 更新：播放按鈕只需抓取現成的翻譯結果 ---
-        async function translateAndPlay() {
-            // 因為 handleInput() 已經即時翻譯好了，我們直接抓 outputText 來播放即可
-            const morseStr = document.getElementById('outputText').value.replace(/\n/g, ' '); // 播放時將換行當作空白處理
-            
-            if (morseStr !== "") {
-                await playMorseString(morseStr.trim());
-            }
-        }
-
-        // --- 聽讀測驗邏輯 ---
-        let currentQuizChar = ''; let currentQuizMorse = '';
-        
-        async function generateRandomQuiz() {
-            document.getElementById('answerBox').innerText = '聽/看信號中...';
-            document.getElementById('answerBox').style.color = "#333";
-            
-            const guessInput = document.getElementById('userGuess');
-            guessInput.value = '';
-            guessInput.classList.remove('shake-error', 'success-glow');
-            
-            const mode = document.getElementById('quizMode').value;
-            let availableKeys = mode === 'letters' ? letterKeys : (mode === 'numbers' ? numberKeys : mixedKeys);
-            currentQuizChar = availableKeys[Math.floor(Math.random() * availableKeys.length)];
-            currentQuizMorse = morseDict[currentQuizChar];
-            
-            await playMorseString(currentQuizMorse);
-            
-            if (currentQuizMorse !== '') {
-                document.getElementById('answerBox').innerText = '播放完畢，請在上方輸入答案並檢查！';
-                guessInput.focus();
-            }
-        }
-
-        async function replayQuiz() {
-            if (currentQuizMorse !== '') { 
-                document.getElementById('answerBox').innerText = '重播信號中...';
-                await playMorseString(currentQuizMorse); 
-                document.getElementById('answerBox').innerText = '播放完畢，請在上方輸入答案並檢查！';
-            }
-        }
-
-        function checkUserAnswer() {
-            const guessInput = document.getElementById('userGuess');
-            guessInput.classList.remove('shake-error', 'success-glow');
-            void guessInput.offsetWidth; 
-
-            if (currentQuizChar === '') {
-                document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！'; 
-                document.getElementById('answerBox').style.color = "#d32f2f"; 
-                return;
-            }
-            
-            const userGuess = guessInput.value.toUpperCase();
-            
-            if (userGuess === '') {
-                document.getElementById('answerBox').innerText = '你還沒輸入答案喔！'; 
-                document.getElementById('answerBox').style.color = "#d32f2f"; 
-                return;
-            }
-
-            if (userGuess === currentQuizChar) {
-                document.getElementById('answerBox').innerText = `🎉 答對了！答案正是 ${currentQuizChar} ( ${currentQuizMorse} )`; 
-                document.getElementById('answerBox').style.color = "#2e7d32"; 
-                guessInput.classList.add('success-glow'); 
-                playSuccessSound(); 
-            } else {
-                document.getElementById('answerBox').innerText = `❌ 哎呀，猜錯了！再聽一次或重新修改答案吧。`; 
-                document.getElementById('answerBox').style.color = "#d32f2f"; 
-                guessInput.classList.add('shake-error'); 
-                playErrorSound(); 
-            }
-        }
-
-        function showAnswer() {
-            if (currentQuizChar !== '') {
-                document.getElementById('answerBox').innerText = `答案是： ${currentQuizChar} ( ${currentQuizMorse} )`; 
-                document.getElementById('answerBox').style.color = "#f57c00"; 
-            } else { 
-                document.getElementById('answerBox').innerText = '請先點擊「隨機出題」！'; 
-            }
-        }
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
