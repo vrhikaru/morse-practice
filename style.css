@@ -61,10 +61,23 @@ body {
   user-select: none;
 }
 
-/* 但輸入 / 輸出的內容還是要能選取複製 */
-textarea, input, .search, code, .card-morse {
+/* 但輸入 / 輸出的內容還是要能選取複製。
+   select 一定要列進來：Android Chrome 在祖先有 user-select:none 時，
+   收合狀態的選項文字會整個不顯示。 */
+textarea, input, select, .search, code, .card-morse {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* 保險：某些 Android / WebKit 版本會忽略 color，要靠 text-fill-color */
+.select {
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+}
+/* 下拉展開後是原生元件，深色模式下要自己指定，否則可能黑字黑底 */
+option {
+  color: var(--ink);
+  background: var(--card);
 }
 
 .app { max-width: 620px; margin: 0 auto; padding: 0 14px; }
