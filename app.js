@@ -22,6 +22,21 @@ const LETTERS = { A:'.-', B:'-...', C:'-.-.', D:'-..', E:'.', F:'..-.', G:'--.',
 const NUMBERS = { 0:'-----', 1:'.----', 2:'..---', 3:'...--', 4:'....-', 5:'.....', 6:'-....', 7:'--...', 8:'---..', 9:'----.' };
 const SYMBOLS = { '.':'.-.-.-', ',':'--..--', '?':'..--..', "'":'.----.', '!':'-.-.--', '/':'-..-.', '(':'-.--.', ')':'-.--.-', '&':'.-...', ':':'---...', ';':'-.-.-.', '=':'-...-', '+':'.-.-.', '-':'-....-', '_':'..--.-', '"':'.-..-.', $:'...-..-', '@':'.--.-.' };
 
+// 統一符號 / 程序信號：連在一起發送，中間不留字元間隔
+const PROSIGNS = {
+  'SOS': { code: '...---...', note: '國際遇難信號' },
+  'CT':  { code: '-.-.-',     note: '開始發報' },
+  'AR':  { code: '.-.-.',     note: '訊息結束' },
+  'K':   { code: '-.-',       note: '請你發送' },
+  'KN':  { code: '-.--.',     note: '只限指定電台回覆' },
+  'AS':  { code: '.-...',     note: '請稍候' },
+  'BT':  { code: '-...-',     note: '分段 / 換行' },
+  'SK':  { code: '...-.-',    note: '通聯結束' },
+  'SN':  { code: '...-.',     note: '收到，了解' },
+  'BK':  { code: '-...-.-',   note: '插話' },
+  'HH':  { code: '........',  note: '更正（發錯了）' },
+};
+
 const CODE_TABLES = {
   standard: { ...LETTERS, ...NUMBERS },
   extended: { ...LETTERS, ...NUMBERS, ...SYMBOLS },
@@ -34,6 +49,7 @@ const S = {
   dict: {},          // 字元 → 密碼
   reverse: {},       // 密碼 → 字元
   letters: [], numbers: [], symbols: [], all: [],
+  prosigns: [], morseOf: {},   // morseOf = 字元表 + 統一符號，播放/出題查碼用
 
   freq: 600, charWpm: 20, overallWpm: 10,
   dit: 60,           // 字元單位時間 (ms)
@@ -41,7 +57,7 @@ const S = {
   sound: true, light: true, vibrate: false,
 
   quizRunning: false,
-  quizChar: '', quizMorse: '', quizScored: false,
+  quizChar: '', quizMorse: '', quizScored: false, groupSize: 1,
   total: 0, correct: 0, streak: 0,
 };
 
@@ -215,7 +231,7 @@ function saveSettings() {
       dict: S.dictName, freq: S.freq, charWpm: S.charWpm, overallWpm: S.overallWpm,
       sound: S.sound, light: S.light, vibrate: S.vibrate,
       koch: +$('kochLevelSlider').value, quizMode: $('quizMode').value,
-      theme: $('themeSelect').value,
+      theme: $('themeSelect').value, group: +$('groupSize').value,
     }));
   } catch (e) { /* 無痕模式或不支援，略過 */ }
 }
@@ -234,6 +250,7 @@ function loadSettings() {
   if (d.quizMode) $('quizMode').value = d.quizMode;
   if (d.koch) $('kochLevelSlider').value = d.koch;
   if (d.theme) $('themeSelect').value = d.theme;
+  if (d.group) $('groupSize').value = d.group;
 }
 
 function applyTheme(v) {
@@ -290,6 +307,12 @@ function switchDictionary() {
     else if (/[0-9]/.test(char)) S.numbers.push(char);
     else S.symbols.push(char);
   }
+
+  // 統一符號不併進 S.reverse，否則會蓋掉標點的解碼
+  // （例如 BT 和「=」的密碼一模一樣，都是 -...-）
+  S.prosigns = Object.keys(PROSIGNS);
+  S.morseOf = { ...S.dict };
+  for (const [label, p] of Object.entries(PROSIGNS)) S.morseOf[label] = p.code;
 
   const optSymbols = $('quizMode').querySelector('option[value="symbols"]');
   optSymbols.hidden = S.symbols.length === 0;
@@ -364,20 +387,25 @@ function renderLearnGrid() {
     ['英文字母', S.letters],
     ['數字', S.numbers],
     ['標點符號', S.symbols],
+    ['統一符號（連著發，中間不斷字）', S.prosigns],
   ];
   let html = '';
   let count = 0;
 
   for (const [title, keys] of groups) {
-    const hits = keys.filter((k) => !q || k.includes(q) || S.dict[k].includes(q));
+    const hits = keys.filter((k) => !q || k.includes(q) || S.morseOf[k].includes(q) ||
+                                    (PROSIGNS[k] && PROSIGNS[k].note.includes(q)));
     if (!hits.length) continue;
     count += hits.length;
     html += `<div class="group-title">${title}</div><div class="grid">`;
-    html += hits.map((k) =>
-      `<button class="card" data-char="${escapeHtml(k)}">
-         <div class="card-char">${escapeHtml(k)}</div>
-         <div class="card-morse">${S.dict[k]}</div>
-       </button>`).join('');
+    html += hits.map((k) => {
+      const p = PROSIGNS[k];
+      return `<button class="card${p ? ' card-wide' : ''}" data-char="${escapeHtml(k)}">
+         <div class="card-char${p ? ' sm' : ''}">${p ? '⟨' + escapeHtml(k) + '⟩' : escapeHtml(k)}</div>
+         <div class="card-morse">${S.morseOf[k]}</div>
+         ${p ? `<div class="card-note">${p.note}</div>` : ''}
+       </button>`;
+    }).join('');
     html += '</div>';
   }
   $('dictGrid').innerHTML = count ? html : '<p class="empty">找不到「' + escapeHtml(q) + '」，換個關鍵字試試。</p>';
@@ -392,6 +420,7 @@ function switchPracticeMode() {
   const guess = $('userGuess');
 
   $('morseKeypad').hidden = !enc;
+  $('groupPanel').hidden = enc;      // 視覺編碼固定單字元
   $('btnReplay').hidden = enc;          // ← 這些元素現在真的存在了
   $('btnShowAnswer').hidden = false;
   $('practiceHint').textContent = enc
@@ -411,6 +440,12 @@ function switchPracticeMode() {
 function handleQuizModeChange() {
   $('kochPanel').style.display = $('quizMode').value === 'koch' ? 'block' : 'none';
   updateKochLevel();
+  saveSettings();
+}
+
+function updateGroupSize() {
+  S.groupSize = +$('groupSize').value;
+  $('groupSizeVal').textContent = S.groupSize;
   saveSettings();
 }
 
@@ -443,12 +478,20 @@ function stopQuiz() {
   $('answerBox').textContent = '';
 }
 
+// 統一符號的標籤本身就是多字元（SOS、AR），串起來會無法斷詞，強制單題
+function groupSizeFor(pool) {
+  const multi = pool.some((c) => c.length > 1);
+  return multi ? 1 : clampInt(S.groupSize, 1, 5);
+}
+const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, v | 0));
+
 function pickPool() {
   const mode = $('quizMode').value;
   if (mode === 'koch') return kochPool().slice(0, +$('kochLevelSlider').value + 1);
   if (mode === 'letters') return S.letters;
   if (mode === 'numbers') return S.numbers;
   if (mode === 'symbols' && S.symbols.length) return S.symbols;
+  if (mode === 'prosigns') return S.prosigns;
   return S.all;
 }
 
@@ -464,8 +507,20 @@ async function nextQuestion() {
   S.quizScored = false;
 
   const pool = pickPool();
-  S.quizChar = pool[Math.floor(Math.random() * pool.length)];
-  S.quizMorse = S.dict[S.quizChar];
+  const n = groupSizeFor(pool);
+
+  const picks = [];
+  for (let i = 0; i < n; i++) picks.push(pool[Math.floor(Math.random() * pool.length)]);
+
+  S.quizChar = picks.join('');
+  // 字元之間留一個空白 → 播放時就會套用 Farnsworth 的字元間隔（3 × S.gap）
+  S.quizMorse = picks.map((c) => S.morseOf[c]).join(' ');
+
+  if (!isEncodeMode()) {
+    const longest = Math.max(...pool.map((c) => c.length));
+    guess.maxLength = longest * n;
+    guess.placeholder = n > 1 ? 'ABC' : (longest > 1 ? 'SOS' : '?');
+  }
 
   if (isEncodeMode()) {
     q.className = 'question big';
@@ -503,7 +558,9 @@ function checkAnswer() {
   const val = guess.value.trim().toUpperCase();
   if (!val) { say('還沒輸入答案喔。', 'err'); return; }
 
-  const correct = isEncodeMode() ? val === S.quizMorse : val === S.quizChar;
+  const correct = isEncodeMode()
+    ? val.replace(/\s+/g, '') === S.quizMorse
+    : val.replace(/\s+/g, '') === S.quizChar;
 
   if (!S.quizScored) {
     S.total++;
@@ -747,7 +804,7 @@ function bind() {
     if (!card) return;
     document.querySelectorAll('.card.playing').forEach((c) => c.classList.remove('playing'));
     card.classList.add('playing');
-    playMorse(S.dict[card.dataset.char]);
+    playMorse(S.morseOf[card.dataset.char]);
     setTimeout(() => card.classList.remove('playing'), 1500);
   });
 
@@ -756,6 +813,7 @@ function bind() {
   $('modeEncode').addEventListener('change', switchPracticeMode);
   $('quizMode').addEventListener('change', handleQuizModeChange);
   $('kochLevelSlider').addEventListener('input', updateKochLevel);
+  $('groupSize').addEventListener('input', updateGroupSize);
   $('autoLevelKoch').addEventListener('change', saveSettings);
   $('btnStartQuiz').addEventListener('click', startQuiz);
   $('btnStopQuiz').addEventListener('click', stopQuiz);
@@ -844,6 +902,7 @@ function init() {
   switchDictionary();
   switchTranslateDir();
   handleQuizModeChange();
+  updateGroupSize();
   switchPracticeMode();
   updateStats();
   renderRibbon([], false);

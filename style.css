@@ -280,7 +280,12 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
 .card:hover { border-color: var(--pine-2); transform: translateY(-2px); box-shadow: var(--shadow); }
 .card.playing { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, var(--card)); }
 .card-char { font-size: 22px; font-weight: 800; color: var(--strong); }
-.card-morse { margin-top: 4px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.card-morse { margin-top: 4px; font-family: var(--mono); font-size: 13px; color: var(--muted); word-break: break-all; }
+.card-char.sm { font-size: 16px; letter-spacing: 1px; }
+.card-note { margin-top: 3px; font-size: 10px; line-height: 1.3; color: var(--muted); }
+/* 統一符號的密碼比較長，字卡給它寬一點 */
+.grid { grid-auto-flow: row dense; }
+.card-wide { grid-column: span 2; }
 .empty { padding: 24px; text-align: center; color: var(--muted); }
 
 /* ---------- Koch ---------- */
@@ -311,10 +316,11 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   color: var(--strong); border-color: var(--pine-2); border-style: solid;
 }
 .question.reveal b { font-size: 56px; line-height: 1.1; letter-spacing: 2px; }
-.question.reveal span { font-size: 22px; letter-spacing: 5px; color: var(--muted); }
+.question.reveal span { font-size: 20px; letter-spacing: 3px; color: var(--muted); word-break: break-all; }
+.question.reveal b { max-width: 100%; word-break: break-all; }
 
 .guess {
-  display: block; width: 100%; max-width: 260px; margin: 4px auto 14px;
+  display: block; width: 100%; max-width: 330px; margin: 4px auto 14px;
   padding: 12px; font-family: var(--mono); font-size: 30px; font-weight: 700;
   text-align: center; text-transform: uppercase; letter-spacing: 4px;
   color: var(--ink); background: var(--card);

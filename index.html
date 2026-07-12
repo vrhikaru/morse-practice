@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#123A2F">
 <meta name="color-scheme" content="light dark">
 <title>童軍摩斯密碼練習器</title>
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -79,6 +79,11 @@
       </div>
       <p id="practiceHint" class="hint hint-strong">聆聽密碼聲音，輸入對應的字元。</p>
 
+      <div id="groupPanel" class="setting">
+        <label for="groupSize">🧩 每題字元數 <b id="groupSizeVal">1</b></label>
+        <input type="range" id="groupSize" class="slider" min="1" max="5" value="1">
+        <p class="hint">超過 1 個字元時，設定頁的「整體速度（Farnsworth）」才會發揮作用 —— 字元照原速打，字與字之間拉長。</p>
+      </div>
 
       <label class="field-label" for="quizMode">題庫範圍</label>
       <select id="quizMode" class="select">
@@ -87,6 +92,7 @@
         <option value="letters">🅰️ 僅英文字母</option>
         <option value="numbers">🔢 僅數字</option>
         <option value="symbols" hidden>#️⃣ 僅標點符號</option>
+        <option value="prosigns">🛟 統一符號（SOS / AR / BT…）</option>
       </select>
 
       <div id="kochPanel" class="koch">
@@ -103,8 +109,8 @@
       </div>
 
       <div id="questionDisplay" class="question">尚未開始</div>
-	  
-	   <div class="btn-row">
+
+      <div class="btn-row">
         <button id="btnStartQuiz" class="btn btn-primary btn-block">▶️ 開始測驗</button>
         <button id="btnStopQuiz" class="btn btn-danger btn-block" hidden>⏹️ 結束測驗</button>
       </div>
@@ -217,6 +223,6 @@
 
 </div>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
