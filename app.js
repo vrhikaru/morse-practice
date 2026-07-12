@@ -258,6 +258,7 @@ function updateConfigs() {
   S.light = $('cfgLight').checked;
   S.vibrate = $('cfgVibrate').checked;
 
+  resetKeyer();          // 速度設定改了，手鍵的手速估算重新起算
   stopEverything();
   saveSettings();
 }
@@ -589,6 +590,10 @@ let pressing = false;
 let pressStart = 0, letterStart = 0, releaseAt = 0;
 let signal = '';
 let letterTimer = null, wordTimer = null;
+let userDit = 60;          // 依照你「實際的手速」動態估算的一個單位長度
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function resetKeyer() { userDit = S.dit; }
 
 function keyDown() {
   if (pressing) return;
@@ -596,6 +601,10 @@ function keyDown() {
   pressStart = Date.now();
   if (!signal) letterStart = pressStart;
   clearTimeout(letterTimer); clearTimeout(wordTimer);
+
+  // 保險：手機長按時瀏覽器可能已經開始選字，先把選取清掉
+  const sel = window.getSelection && window.getSelection();
+  if (sel && sel.removeAllRanges) sel.removeAllRanges();
 
   playToken++;                        // 中斷其他播放
   if (S.light) $('lamp').classList.add('on');
@@ -614,36 +623,47 @@ function keyUp() {
   $('telegraphKey').classList.remove('down');
 
   const held = releaseAt - pressStart;
-  signal += held < S.dit * 2 ? '.' : '-';
-  $('currentSignalDisplay').textContent = signal;
 
-  letterTimer = setTimeout(commitLetter, S.dit * 3);       // 3 單位沒動作 → 斷字
-  wordTimer = setTimeout(() => {                            // 7 單位沒動作 → 斷詞
+  // 長短判定改用「你自己的手速」，而不是設定值
+  const isDash = held >= userDit * 2;
+  const est = isDash ? held / 3 : held;
+  userDit = clamp(userDit * 0.6 + est * 0.4, 40, 600);   // 平滑地跟著你調整
+
+  signal += isDash ? '-' : '.';
+  showSignal();
+
+  // 斷字 / 斷詞的等待時間也跟著手速走，並且有一個下限，
+  // 避免像舊版那樣只給你 180ms 就強制送字
+  const letterGap = Math.max(userDit * 4, 500);
+  const wordGap = Math.max(userDit * 9, 1200);
+
+  letterTimer = setTimeout(commitLetter, letterGap);
+  wordTimer = setTimeout(() => {
     const out = $('manualOutputText');
     if (out.value && !out.value.endsWith(' ')) out.value += ' ';
-  }, S.dit * 7);
+  }, wordGap);
+
+  const wpm = Math.min(99, Math.round(1200 / userDit));
+  $('currentWpmDisplay').textContent = wpm + ' WPM';
+}
+
+// 一邊敲一邊顯示目前組到哪，讓你知道還沒送出
+function showSignal() {
+  const box = $('currentSignalDisplay');
+  if (!signal) { box.textContent = '—'; return; }
+  const match = S.reverse[signal];
+  box.textContent = match ? `${signal} → ${match}` : signal;
 }
 
 function commitLetter() {
+  clearTimeout(letterTimer);
   if (!signal) return;
   const char = S.reverse[signal] || '?';
   const out = $('manualOutputText');
   out.value += char;
   out.scrollTop = out.scrollHeight;
-
-  // 估算實際發送速率
-  if (char !== '?' && releaseAt > letterStart) {
-    let units = 0;
-    for (const c of signal) units += c === '.' ? 1 : 3;
-    units += signal.length - 1;
-    const per = (releaseAt - letterStart) / units;
-    if (per > 0) {
-      const wpm = Math.min(99, Math.round(1200 / per));
-      $('currentWpmDisplay').textContent = wpm + ' WPM';
-    }
-  }
   signal = '';
-  $('currentSignalDisplay').textContent = '—';
+  showSignal();
 }
 
 /* ---------- 12. 綁定事件 ---------- */
@@ -722,10 +742,25 @@ function bind() {
 
   // 發報鍵：滑鼠 / 觸控 / 空白鍵都可以
   const tk = $('telegraphKey');
-  tk.addEventListener('pointerdown', (e) => { e.preventDefault(); tk.setPointerCapture(e.pointerId); keyDown(); });
-  tk.addEventListener('pointerup', keyUp);
-  tk.addEventListener('pointercancel', keyUp);
+  // Android 長按會啟動「選字」手勢，瀏覽器接著對按鈕丟出 pointercancel，
+  // 程式就誤以為你放開了 → 長訊號被切斷。在 touchstart 就 preventDefault 可以擋掉整套手勢。
+  tk.addEventListener('touchstart', (e) => { e.preventDefault(); keyDown(); }, { passive: false });
+  tk.addEventListener('touchend', (e) => { e.preventDefault(); keyUp(); }, { passive: false });
+  tk.addEventListener('touchcancel', keyUp);
+
+  // 桌機（沒有觸控事件時才走 pointer，避免同一次按下被算兩次）
+  tk.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    e.preventDefault();
+    tk.setPointerCapture(e.pointerId);
+    keyDown();
+  });
+  tk.addEventListener('pointerup', (e) => { if (e.pointerType !== 'touch') keyUp(); });
+  tk.addEventListener('pointercancel', (e) => { if (e.pointerType !== 'touch') keyUp(); });
   tk.addEventListener('contextmenu', (e) => e.preventDefault());
+  tk.addEventListener('selectstart', (e) => e.preventDefault());
+  tk.addEventListener('dblclick', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => { if (pressing) e.preventDefault(); });
 
   document.addEventListener('keydown', (e) => {
     if (e.code !== 'Space' || e.repeat) return;
@@ -738,15 +773,22 @@ function bind() {
     e.preventDefault(); keyUp();
   });
 
-  $('btnSpace').addEventListener('click', () => { $('manualOutputText').value += ' '; });
+  $('btnBreak').addEventListener('click', commitLetter);
+  $('btnSpace').addEventListener('click', () => {
+    clearTimeout(letterTimer); clearTimeout(wordTimer);
+    commitLetter();                       // 先把還沒送出的訊號結成一個字
+    $('manualOutputText').value += ' ';
+  });
   $('btnManualBack').addEventListener('click', () => {
     const o = $('manualOutputText');
     o.value = o.value.slice(0, -1);
   });
   $('btnClearManual').addEventListener('click', () => {
+    clearTimeout(letterTimer); clearTimeout(wordTimer);
     $('manualOutputText').value = '';
     signal = '';
-    $('currentSignalDisplay').textContent = '—';
+    resetKeyer();
+    showSignal();
     $('currentWpmDisplay').textContent = '-- WPM';
   });
 

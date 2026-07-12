@@ -56,6 +56,15 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
+  /* 快按按鈕時不要被判定成選字 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 但輸入 / 輸出的內容還是要能選取複製 */
+textarea, input, .search, code, .card-morse {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .app { max-width: 620px; margin: 0 auto; padding: 0 14px; }
@@ -294,6 +303,9 @@ code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px;
   border: 6px solid #8f2c22; border-radius: 50%;
   cursor: pointer; box-shadow: 0 10px 0 #7d2620, 0 16px 26px rgba(0,0,0,.22);
   transition: transform .05s, box-shadow .05s;
+  /* 長按不要跳複製選單，也不要被捲動 / 雙擊縮放搶走 */
+  -webkit-touch-callout: none;
+  touch-action: none;
 }
 .tkey small { font-size: 12px; font-weight: 600; opacity: .85; }
 .tkey.down { transform: translateY(9px); box-shadow: 0 1px 0 #7d2620, 0 4px 10px rgba(0,0,0,.2); }

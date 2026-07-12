@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#123A2F">
 <title>童軍摩斯密碼練習器</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -135,7 +135,7 @@
 
     <!-- ========== 發報 ========== -->
     <section id="ManualTab" class="panel">
-      <p class="hint hint-strong">按住＝發送。短按是「滴」，長按是「答」；放開一下下會自動斷字。</p>
+      <p class="hint hint-strong">按住＝發送。短按是「滴」，長按是「答」。<br>系統會跟著你的手速自動校正，停頓久一點就自動斷字；想馬上送出可按「斷字」。</p>
 
       <button id="telegraphKey" class="tkey">發報鍵<small>按住或按空白鍵</small></button>
 
@@ -154,6 +154,7 @@
       <textarea id="manualOutputText" placeholder="你發送的文字會顯示在這裡…" readonly></textarea>
 
       <div class="btn-row">
+        <button id="btnBreak" class="btn btn-ghost">⏎ 斷字</button>
         <button id="btnSpace" class="btn btn-ghost">␣ 空白</button>
         <button id="btnManualBack" class="btn btn-ghost">⌫ 退一格</button>
         <button id="btnClearManual" class="btn btn-ghost">🗑️ 清除</button>
@@ -207,6 +208,6 @@
 
 </div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
