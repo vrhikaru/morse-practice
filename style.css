@@ -4,6 +4,10 @@
    ============================================================ */
 
 :root {
+  /* 告訴瀏覽器「深淺色我自己處理」。少了這行，Chrome Android 的
+     自動深色模式會擅自把整頁反色，導致下拉選單等元件對比度爆掉。 */
+  color-scheme: light dark;
+
   --pine:      #123a2f;
   --pine-2:    #1d5c48;
   --pine-soft: #d8e6dc;
@@ -69,11 +73,6 @@ textarea, input, select, .search, code, .card-morse {
   user-select: text;
 }
 
-/* 保險：某些 Android / WebKit 版本會忽略 color，要靠 text-fill-color */
-.select {
-  color: var(--ink);
-  -webkit-text-fill-color: var(--ink);
-}
 /* 下拉展開後是原生元件，深色模式下要自己指定，否則可能黑字黑底 */
 option {
   color: var(--ink);
@@ -162,7 +161,22 @@ textarea:focus, .select:focus, .search:focus, .guess:focus {
   border-color: var(--pine-2);
   box-shadow: 0 0 0 4px rgba(29,92,72,.15);
 }
-.select { appearance: none; cursor: pointer; background-image: linear-gradient(transparent, transparent); }
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 42px;
+  font-weight: 600;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  background-color: var(--card);
+  /* appearance:none 會把原生箭頭一起拿掉，自己畫一個回來 */
+  background-image: linear-gradient(45deg, transparent 50%, var(--pine-2) 50%),
+                    linear-gradient(135deg, var(--pine-2) 50%, transparent 50%);
+  background-size: 7px 7px, 7px 7px;
+  background-position: right 20px center, right 13px center;
+  background-repeat: no-repeat;
+}
 .hint { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
 .hint-strong { color: var(--pine-2); font-weight: 600; }
 code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px; border-radius: 4px; }
