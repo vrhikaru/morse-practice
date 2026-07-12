@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#123A2F">
+<title>童軍摩斯密碼練習器</title>
+<style>
+/* ============================================================
+   童軍摩斯密碼練習器 — 版面樣式
+   配色：營地綠紙 + 訊號燈琥珀
+   ============================================================ */
+
+:root {
+  --pine:      #123a2f;
+  --pine-2:    #1d5c48;
+  --pine-soft: #d8e6dc;
+  --paper:     #e9efe7;
+  --card:      #ffffff;
+  --ink:       #16241f;
+  --muted:     #5c6b63;
+  --line:      #cdd9cf;
+
+  --amber:     #f2a100;
+  --lamp:      #ffd666;
+  --sky:       #2c6e9b;
+  --rust:      #b23a2e;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --shadow: 0 2px 4px rgba(18,58,47,.06), 0 8px 24px rgba(18,58,47,.08);
+
+  --font: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pine:      #0d2a22;
+    --pine-2:    #2e8266;
+    --pine-soft: #1c3a31;
+    --paper:     #101815;
+    --card:      #17231e;
+    --ink:       #e7efe9;
+    --muted:     #9bafa4;
+    --line:      #2a3c34;
+    --shadow: 0 2px 4px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* .keypad 等元素有 display:flex，類別選擇器會蓋掉 UA 的 [hidden]{display:none}，
+   所以要明確宣告，否則 hidden 屬性形同無效 */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 0 0 96px;              /* 留位置給底部導覽 */
+  font-family: var(--font);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+.app { max-width: 620px; margin: 0 auto; padding: 0 14px; }
+
+/* ---------- 頂部 ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 -14px; padding: 12px 16px;
+  background: var(--pine);
+  color: #fff;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  box-shadow: 0 6px 20px rgba(18,58,47,.25);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { font-size: 26px; }
+.brand-text h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: .5px; }
+.brand-text p { margin: 2px 0 0; font-size: 11px; letter-spacing: 2px; color: #9fd3bf; }
+
+.lamp-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lamp {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: #24463c;
+  border: 3px solid #35594d;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,.6);
+  transition: background-color .04s linear, box-shadow .04s linear;
+}
+.lamp.on {
+  background: var(--lamp);
+  border-color: #fff0c2;
+  box-shadow: 0 0 26px 6px rgba(255,214,102,.75), inset 0 0 8px rgba(255,255,255,.7);
+}
+.lamp-label { font-size: 10px; letter-spacing: 1px; color: #9fd3bf; }
+
+/* ---------- 節奏帶（本 App 的招牌元素） ---------- */
+.ribbon {
+  display: flex; align-items: center; gap: 5px;
+  min-height: 40px; margin: 10px 0 14px; padding: 0 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--amber);
+  border-radius: var(--r-sm);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  /* 內容超出寬度時，左右邊緣淡出，提示還有東西 */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+.ribbon::-webkit-scrollbar { display: none; }
+.ribbon-idle { font-size: 12px; color: var(--muted); }
+.ribbon .el {
+  height: 12px; border-radius: 6px; flex: none;
+  background: var(--pine-soft);
+  transition: background-color .06s, transform .06s;
+}
+.ribbon .el.dot  { width: 12px; }
+.ribbon .el.dash { width: 36px; }
+.ribbon .el.lit  { background: var(--amber); transform: scaleY(1.35); }
+.ribbon .el.done { background: var(--pine-2); }
+.ribbon .gap  { width: 10px; flex: none; }
+.ribbon .word { width: 6px; height: 20px; flex: none; border-left: 2px dotted var(--muted); }
+
+/* ---------- 分頁面板 ---------- */
+.panel { display: none; animation: fade .25s ease; }
+.panel.is-active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- 表單元件 ---------- */
+.field-label {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 14px 0 6px; font-size: 14px; font-weight: 700; color: var(--pine-2);
+}
+textarea, .select, .search {
+  width: 100%; padding: 12px 14px;
+  font-family: var(--font); font-size: 16px;
+  color: var(--ink); background: var(--card);
+  border: 2px solid var(--line); border-radius: var(--r-md);
+  outline: none;
+}
+textarea { height: 92px; resize: vertical; line-height: 1.5; }
+textarea.mono, .mono { font-family: var(--mono); letter-spacing: 1px; }
+textarea:focus, .select:focus, .search:focus, .guess:focus {
+  border-color: var(--pine-2);
+  box-shadow: 0 0 0 4px rgba(29,92,72,.15);
+}
+.select { appearance: none; cursor: pointer; background-image: linear-gradient(transparent, transparent); }
+.hint { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.hint-strong { color: var(--pine-2); font-weight: 600; }
+code { font-family: var(--mono); background: var(--pine-soft); padding: 1px 5px; border-radius: 4px; }
+
+/* ---------- 按鈕 ---------- */
+.btn {
+  flex: 1; min-height: 48px; padding: 12px 16px;
+  font-family: var(--font); font-size: 16px; font-weight: 700;
+  color: #fff; background: var(--pine-2);
+  border: none; border-radius: var(--r-md); cursor: pointer;
+  transition: transform .06s, filter .15s;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(2px); }
+.btn-primary { background: var(--pine-2); }
+.btn-danger  { background: var(--rust); }
+.btn-sky     { background: var(--sky); }
+.btn-ghost   { background: var(--card); color: var(--pine-2); border: 2px solid var(--line); }
+.btn-block   { width: 100%; flex: none; }
+.btn-lg      { min-height: 56px; font-size: 18px; }
+.btn-row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.btn-row-center { justify-content: center; }
+.btn-row .btn { flex: 1 1 120px; }
+.btn-row .btn-block { flex: 1 1 100%; }
+
+.btn-mini {
+  padding: 4px 10px; font-size: 12px; font-weight: 700;
+  color: var(--pine-2); background: var(--card);
+  border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+}
+.btn-mini-danger { color: #fff; background: var(--rust); border-color: var(--rust); }
+
+/* ---------- 分段切換 ---------- */
+.seg {
+  display: flex; margin: 14px 0 8px; padding: 4px;
+  background: var(--pine-soft); border-radius: 999px;
+}
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label {
+  flex: 1; padding: 10px 8px; text-align: center; cursor: pointer;
+  font-size: 15px; font-weight: 700; color: var(--pine-2);
+  border-radius: 999px; transition: .15s;
+}
+.seg input:checked + label { background: var(--card); color: var(--pine); box-shadow: var(--shadow); }
+.seg input:focus-visible + label { outline: 3px solid var(--amber); }
+
+/* ---------- 設定 ---------- */
+.setting {
+  margin: 14px 0; padding: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.setting > label { display: block; font-size: 15px; font-weight: 700; color: var(--pine-2); }
+.setting b { color: var(--amber); font-size: 17px; }
+.slider { width: 100%; margin: 10px 0 0; accent-color: var(--pine-2); height: 28px; }
+.toggles { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px; font-size: 15px; font-weight: 600; cursor: pointer;
+  background: var(--card); border: 2px solid var(--line); border-radius: 999px;
+}
+.chip input, .check input { width: 18px; height: 18px; accent-color: var(--pine-2); }
+.chip:has(input:checked) { border-color: var(--pine-2); background: var(--pine-soft); }
+.check { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 14px; cursor: pointer; }
+
+/* ---------- 學習字卡 ---------- */
+.toolbar { margin: 14px 0 4px; }
+.group-title {
+  margin: 18px 0 8px; font-size: 13px; font-weight: 800;
+  letter-spacing: 2px; color: var(--muted);
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+.card {
+  padding: 10px 4px; text-align: center; cursor: pointer;
+  background: var(--card); border: 2px solid var(--line); border-radius: var(--r-md);
+  transition: .15s;
+}
+.card:hover { border-color: var(--pine-2); transform: translateY(-2px); box-shadow: var(--shadow); }
+.card.playing { border-color: var(--amber); background: #fff7e3; }
+.card-char { font-size: 22px; font-weight: 800; color: var(--pine); }
+.card-morse { margin-top: 4px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.empty { padding: 24px; text-align: center; color: var(--muted); }
+
+/* ---------- Koch ---------- */
+.koch {
+  margin: 12px 0; padding: 14px;
+  background: var(--pine-soft); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.koch-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.koch-head strong { color: var(--pine); font-size: 15px; }
+.koch-chars { font-size: 13px; color: var(--pine-2); text-align: right; word-break: break-all; }
+.progress { height: 8px; margin-top: 10px; background: var(--card); border-radius: 999px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0%; background: var(--amber); border-radius: 999px; transition: width .3s; }
+
+/* ---------- 題目卡 ---------- */
+.question {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 108px; margin: 14px 0; padding: 12px;
+  font-size: 22px; font-weight: 700; text-align: center; color: var(--muted);
+  background: var(--card); border: 3px dashed var(--line); border-radius: var(--r-lg);
+}
+.question.big { font-size: 68px; letter-spacing: 4px; color: var(--pine); border-color: var(--pine-2); border-style: solid; }
+.question.listen { color: var(--sky); border-color: var(--sky); }
+.question.win { color: var(--amber); border-color: var(--amber); font-size: 24px; }
+
+.guess {
+  display: block; width: 100%; max-width: 260px; margin: 4px auto 14px;
+  padding: 12px; font-family: var(--mono); font-size: 30px; font-weight: 700;
+  text-align: center; text-transform: uppercase; letter-spacing: 4px;
+  color: var(--ink); background: var(--card);
+  border: 3px solid var(--pine-2); border-radius: var(--r-md); outline: none;
+}
+.guess.err { border-color: var(--rust); background: #fdecea; animation: shake .35s; }
+.guess.ok  { border-color: var(--pine-2); background: #e7f4ec; box-shadow: 0 0 0 6px rgba(29,92,72,.15); }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+.keypad { display: flex; gap: 10px; margin: 0 0 14px; }
+.key {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 66px; font-size: 26px; font-weight: 800; color: #fff;
+  border: none; border-radius: var(--r-md); cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0,0,0,.22);
+  transition: transform .05s, box-shadow .05s;
+}
+.key small { font-size: 12px; font-weight: 600; opacity: .9; }
+.key:active { transform: translateY(4px); box-shadow: none; }
+.key-dot  { background: var(--sky); }
+.key-dash { background: var(--rust); }
+.key-del  { background: #6b7a72; font-size: 22px; }
+
+.answer { min-height: 30px; margin: 12px 0; font-size: 16px; font-weight: 700; text-align: center; }
+.answer.ok   { color: var(--pine-2); }
+.answer.err  { color: var(--rust); }
+.answer.info { color: var(--amber); }
+
+.stats {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 16px; padding: 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.stat { flex: 1; min-width: 62px; text-align: center; }
+.stat span { display: block; font-size: 20px; font-weight: 800; color: var(--pine); }
+.stat small { font-size: 11px; color: var(--muted); }
+.stat-fire span { color: var(--amber); }
+
+/* ---------- 發報鍵 ---------- */
+.tkey {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 168px; height: 168px; margin: 18px auto;
+  font-family: var(--font); font-size: 22px; font-weight: 800; color: #fff;
+  background: radial-gradient(circle at 32% 28%, #e0574a, var(--rust) 62%);
+  border: 6px solid #8f2c22; border-radius: 50%;
+  cursor: pointer; box-shadow: 0 10px 0 #7d2620, 0 16px 26px rgba(0,0,0,.22);
+  transition: transform .05s, box-shadow .05s;
+}
+.tkey small { font-size: 12px; font-weight: 600; opacity: .85; }
+.tkey.down { transform: translateY(9px); box-shadow: 0 1px 0 #7d2620, 0 4px 10px rgba(0,0,0,.2); }
+
+.readout { display: flex; gap: 10px; }
+.readout-item {
+  flex: 1; padding: 10px 12px; text-align: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.readout-item small { font-size: 11px; color: var(--muted); }
+.readout-big { margin-top: 2px; font-size: 24px; font-weight: 800; letter-spacing: 3px; color: var(--pine); min-height: 30px; }
+
+/* ---------- 底部導覽 ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex; gap: 2px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -6px 20px rgba(18,58,47,.1);
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 2px; font-family: var(--font); font-size: 11px; font-weight: 700;
+  color: var(--muted); background: none; border: none; border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.tab span { font-size: 21px; line-height: 1; }
+.tab.is-active { color: var(--pine); background: var(--pine-soft); }
+
+@media (min-width: 700px) {
+  .tabbar { position: static; margin: 16px 0 0; border-radius: var(--r-md); border: 1px solid var(--line); }
+  body { padding-bottom: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== 頂部：訊號燈永遠看得見 ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⛺</span>
+      <div class="brand-text">
+        <h1>童軍摩斯密碼練習器</h1>
+        <p>光 · 聲 · 震動 三合一訊號</p>
+      </div>
+    </div>
+    <div class="lamp-slot">
+      <div id="lamp" class="lamp" role="img" aria-label="訊號燈"></div>
+      <span id="lampLabel" class="lamp-label">待命</span>
+    </div>
+  </header>
+
+  <!-- ===== 節奏帶：把正在發送的滴答畫出來 ===== -->
+  <div id="ribbon" class="ribbon" aria-hidden="true">
+    <span class="ribbon-idle">節奏帶：播放時會顯示滴（短）／答（長）</span>
+  </div>
+
+  <main id="main">
+
+    <!-- ========== 翻譯 ========== -->
+    <section id="TranslateTab" class="panel is-active">
+      <div class="seg" role="radiogroup" aria-label="翻譯方向">
+        <input type="radio" name="tDir" id="dirEncode" checked>
+        <label for="dirEncode">文字 ➜ 密碼</label>
+        <input type="radio" name="tDir" id="dirDecode">
+        <label for="dirDecode">密碼 ➜ 文字</label>
+      </div>
+
+      <label class="field-label" for="inputText"><span id="inputLabel">輸入文字</span></label>
+      <textarea id="inputText" placeholder="例如：BE PREPARED"></textarea>
+
+      <div class="btn-row">
+        <button id="btnPlayMorse" class="btn btn-primary">▶️ 播放密碼</button>
+        <button id="btnStopMorse" class="btn btn-ghost">⏹️ 停止</button>
+        <button id="btnClearText" class="btn btn-ghost">🗑️ 清除</button>
+      </div>
+
+      <label class="field-label" for="outputText"><span id="outputLabel">翻譯結果</span>
+        <button id="btnCopy" class="btn-mini">📋 複製</button>
+      </label>
+      <textarea id="outputText" class="mono" placeholder="結果會即時出現在這裡…" readonly></textarea>
+      <p class="hint">一個空白＝字元間隔，<code>/</code>＝單字間隔。</p>
+    </section>
+
+    <!-- ========== 學習 ========== -->
+    <section id="LearnTab" class="panel">
+      <div class="toolbar">
+        <input type="search" id="dictSearch" class="search" placeholder="🔍 搜尋字元（例如 S 或 ...）">
+      </div>
+      <p class="hint">點字卡＝播放該字元的密碼。</p>
+      <div id="dictGrid"></div>
+    </section>
+
+    <!-- ========== 測驗 ========== -->
+    <section id="PracticeTab" class="panel">
+
+      <div class="seg" role="radiogroup" aria-label="測驗模式">
+        <input type="radio" name="pMode" id="modeDecode" checked>
+        <label for="modeDecode">🎧 聽讀解碼</label>
+        <input type="radio" name="pMode" id="modeEncode">
+        <label for="modeEncode">👁️ 視覺編碼</label>
+      </div>
+      <p id="practiceHint" class="hint hint-strong">聆聽密碼聲音，輸入對應的字元。</p>
+
+      <div class="btn-row">
+        <button id="btnStartQuiz" class="btn btn-primary btn-block">▶️ 開始測驗</button>
+        <button id="btnStopQuiz" class="btn btn-danger btn-block" hidden>⏹️ 結束測驗</button>
+      </div>
+
+      <label class="field-label" for="quizMode">題庫範圍</label>
+      <select id="quizMode" class="select">
+        <option value="koch">⭐ Koch 柯赫學習法（推薦）</option>
+        <option value="all">🔀 全部混合</option>
+        <option value="letters">🅰️ 僅英文字母</option>
+        <option value="numbers">🔢 僅數字</option>
+        <option value="symbols" hidden>#️⃣ 僅標點符號</option>
+      </select>
+
+      <div id="kochPanel" class="koch">
+        <div class="koch-head">
+          <strong>🏆 Koch 等級 <span id="kochLevelVal">1</span></strong>
+          <span id="kochChars" class="koch-chars mono">K M</span>
+        </div>
+        <input type="range" id="kochLevelSlider" class="slider" min="1" max="35" value="1">
+        <label class="check">
+          <input type="checkbox" id="autoLevelKoch" checked>
+          📈 連對 5 題自動晉級
+        </label>
+        <div class="progress" aria-hidden="true"><div id="kochProgress" class="progress-bar"></div></div>
+      </div>
+
+      <div id="questionDisplay" class="question">尚未開始</div>
+
+      <div class="btn-row btn-row-center">
+        <button id="btnReplay" class="btn btn-sky">🔁 再聽一次</button>
+        <button id="btnShowAnswer" class="btn btn-ghost">💡 看答案</button>
+      </div>
+
+      <input type="text" id="userGuess" class="guess" maxlength="1" placeholder="?" autocomplete="off" autocapitalize="characters" spellcheck="false">
+
+      <div id="morseKeypad" class="keypad" hidden>
+        <button class="key key-dot" data-morse=".">・<small>滴</small></button>
+        <button class="key key-dash" data-morse="-">—<small>答</small></button>
+        <button class="key key-del" id="btnBackspace">⌫<small>刪除</small></button>
+      </div>
+
+      <button id="btnCheck" class="btn btn-primary btn-block btn-lg">✅ 檢查答案</button>
+
+      <div id="answerBox" class="answer" role="status" aria-live="polite"></div>
+
+      <div class="stats">
+        <div class="stat"><span id="stCorrect">0</span><small>答對</small></div>
+        <div class="stat"><span id="stTotal">0</span><small>總題數</small></div>
+        <div class="stat"><span id="stRate">0%</span><small>正確率</small></div>
+        <div class="stat stat-fire"><span id="stStreak">0</span><small>🔥 連對</small></div>
+        <button id="btnReset" class="btn-mini btn-mini-danger">歸零</button>
+      </div>
+    </section>
+
+    <!-- ========== 發報 ========== -->
+    <section id="ManualTab" class="panel">
+      <p class="hint hint-strong">按住＝發送。短按是「滴」，長按是「答」；放開一下下會自動斷字。</p>
+
+      <button id="telegraphKey" class="tkey">發報鍵<small>按住或按空白鍵</small></button>
+
+      <div class="readout">
+        <div class="readout-item">
+          <small>目前訊號</small>
+          <div id="currentSignalDisplay" class="mono readout-big">—</div>
+        </div>
+        <div class="readout-item">
+          <small>發送速率</small>
+          <div id="currentWpmDisplay" class="readout-big">-- WPM</div>
+        </div>
+      </div>
+
+      <label class="field-label" for="manualOutputText">解讀結果</label>
+      <textarea id="manualOutputText" placeholder="你發送的文字會顯示在這裡…" readonly></textarea>
+
+      <div class="btn-row">
+        <button id="btnSpace" class="btn btn-ghost">␣ 空白</button>
+        <button id="btnManualBack" class="btn btn-ghost">⌫ 退一格</button>
+        <button id="btnClearManual" class="btn btn-ghost">🗑️ 清除</button>
+      </div>
+    </section>
+
+    <!-- ========== 設定 ========== -->
+    <section id="SettingsTab" class="panel">
+      <label class="field-label" for="dictSelect">📚 密碼表</label>
+      <select id="dictSelect" class="select">
+        <option value="standard">國際標準版（英文字母＋數字）</option>
+        <option value="extended">擴充符號版（＋標點符號）</option>
+      </select>
+
+      <div class="setting">
+        <label for="freqSlider">🎵 聲音頻率 <b id="freqValue">600</b> Hz</label>
+        <input type="range" id="freqSlider" class="slider" min="300" max="1000" step="10" value="600">
+      </div>
+
+      <div class="setting">
+        <label for="charWpmSlider">⚡ 字元速度 <b id="charWpmValue">20</b> WPM</label>
+        <input type="range" id="charWpmSlider" class="slider" min="5" max="40" value="20">
+      </div>
+
+      <div class="setting">
+        <label for="overallWpmSlider">🐢 整體速度 <b id="overallWpmValue">10</b> WPM</label>
+        <input type="range" id="overallWpmSlider" class="slider" min="5" max="40" value="10">
+        <p class="hint">Farnsworth 練法：字元照原速打，但字與字之間拉長，比較好聽出節奏。整體速度不會超過字元速度。</p>
+      </div>
+
+      <div class="toggles">
+        <label class="chip"><input type="checkbox" id="cfgSound" checked> 🔊 聲音</label>
+        <label class="chip"><input type="checkbox" id="cfgLight" checked> 💡 燈光</label>
+        <label class="chip"><input type="checkbox" id="cfgVibrate"> 📳 震動</label>
+      </div>
+
+      <button id="btnTestSignal" class="btn btn-ghost btn-block">🔔 試聽（SOS）</button>
+      <p class="hint">設定會自動記住，下次打開還在。</p>
+    </section>
+
+  </main>
+
+  <!-- ===== 底部導覽：手機單手好按 ===== -->
+  <nav class="tabbar" id="tabbar" role="tablist">
+    <button class="tab is-active" data-tab="TranslateTab" role="tab" aria-selected="true"><span>📝</span>翻譯</button>
+    <button class="tab" data-tab="LearnTab" role="tab" aria-selected="false"><span>📖</span>學習</button>
+    <button class="tab" data-tab="PracticeTab" role="tab" aria-selected="false"><span>🎯</span>測驗</button>
+    <button class="tab" data-tab="ManualTab" role="tab" aria-selected="false"><span>🖐️</span>發報</button>
+    <button class="tab" data-tab="SettingsTab" role="tab" aria-selected="false"><span>⚙️</span>設定</button>
+  </nav>
+
+</div>
+
+<script>
+/* ============================================================
+   童軍摩斯密碼練習器
+   ------------------------------------------------------------
+   修正重點：
+   1. 舊版 switchPracticeMode() 抓取不存在的元素 (btnShowAnswer /
+      btnReplay / practiceHint / modeKoch) → 直接拋出 TypeError，
+      導致「視覺編碼」模式的輸入框長度永遠停在 1，整個模式壞掉。
+   2. isQuizRunning 沒有宣告（隱性全域）。
+   3. 一開始沒有呼叫 updateConfigs()，Farnsworth 間隔沒生效。
+   4. 單字間隔被算成 3+7+3 = 13 單位（正確為 7）。
+   5. 振盪器直接接 destination → 每個音都有爆音；改用 gain 包絡。
+   6. 切分頁 / 換模式會把統計歸零；現在只有按「歸零」才會清空。
+   7. replayQuiz() 與 showAnswer() 寫好了卻沒有按鈕可以呼叫。
+   ============================================================ */
+
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+
+/* ---------- 1. 密碼表 ---------- */
+const LETTERS = { A:'.-', B:'-...', C:'-.-.', D:'-..', E:'.', F:'..-.', G:'--.', H:'....', I:'..', J:'.---', K:'-.-', L:'.-..', M:'--', N:'-.', O:'---', P:'.--.', Q:'--.-', R:'.-.', S:'...', T:'-', U:'..-', V:'...-', W:'.--', X:'-..-', Y:'-.--', Z:'--..' };
+const NUMBERS = { 0:'-----', 1:'.----', 2:'..---', 3:'...--', 4:'....-', 5:'.....', 6:'-....', 7:'--...', 8:'---..', 9:'----.' };
+const SYMBOLS = { '.':'.-.-.-', ',':'--..--', '?':'..--..', "'":'.----.', '!':'-.-.--', '/':'-..-.', '(':'-.--.', ')':'-.--.-', '&':'.-...', ':':'---...', ';':'-.-.-.', '=':'-...-', '+':'.-.-.', '-':'-....-', '_':'..--.-', '"':'.-..-.', $:'...-..-', '@':'.--.-.' };
+
+const CODE_TABLES = {
+  standard: { ...LETTERS, ...NUMBERS },
+  extended: { ...LETTERS, ...NUMBERS, ...SYMBOLS },
+};
+const KOCH_SEQUENCE = 'KMRSUAPTLOWI.NJEF0Y,VG5/Q9ZH38B?427C1D6X'.split('');
+
+/* ---------- 2. 狀態 ---------- */
+const S = {
+  dictName: 'standard',
+  dict: {},          // 字元 → 密碼
+  reverse: {},       // 密碼 → 字元
+  letters: [], numbers: [], symbols: [], all: [],
+
+  freq: 600, charWpm: 20, overallWpm: 10,
+  dit: 60,           // 字元單位時間 (ms)
+  gap: 60,           // Farnsworth 間隔單位時間 (ms)
+  sound: true, light: true, vibrate: false,
+
+  quizRunning: false,
+  quizChar: '', quizMorse: '', quizScored: false,
+  total: 0, correct: 0, streak: 0,
+};
+
+let playToken = 0;   // 播放序號：一有新動作就作廢舊的播放
+let quizToken = 0;   // 題目序號：避免舊的 setTimeout 蓋掉新題目
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ---------- 3. 音訊引擎（含 gain 包絡，不會爆音） ---------- */
+let audioCtx = null;
+let activeTone = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+// iOS 需要在使用者手勢中解鎖音訊
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
+  document.addEventListener(ev, ensureAudio, { once: true, passive: true })
+);
+
+function toneOn() {
+  if (!S.sound) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  toneOff();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = S.freq;
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.006);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  activeTone = { osc, gain };
+}
+
+function toneOff() {
+  if (!activeTone || !audioCtx) return;
+  const { osc, gain } = activeTone;
+  activeTone = null;
+  const t = audioCtx.currentTime;
+  try {
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(gain.gain.value || 0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.008);
+    osc.stop(t + 0.03);
+  } catch (e) { /* 已停止 */ }
+  setTimeout(() => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} }, 80);
+}
+
+function beep(from, to, dur, type = 'sine', vol = 0.2) {
+  if (!S.sound) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(to, ctx.currentTime + dur);
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + dur + 0.02);
+}
+const successSound = () => beep(740, 1180, 0.22);
+const errorSound   = () => beep(240, 140, 0.28, 'sawtooth', 0.15);
+
+/* ---------- 4. 燈光 / 震動 ---------- */
+function signalOn(duration) {
+  if (S.light) { $('lamp').classList.add('on'); $('lampLabel').textContent = '發送中'; }
+  if (S.sound) toneOn();
+  if (S.vibrate && navigator.vibrate) navigator.vibrate(duration);
+}
+function signalOff() {
+  $('lamp').classList.remove('on');
+  $('lampLabel').textContent = '待命';
+  toneOff();
+}
+function stopEverything() {
+  playToken++;
+  signalOff();
+  if (navigator.vibrate) navigator.vibrate(0);
+}
+
+/* ---------- 5. 播放器（正確的 Farnsworth 間隔） ---------- */
+// 把密碼字串切成 token；'/' 會吃掉左右空白，避免 3+7+3=13 單位的錯誤
+function parseMorse(str) {
+  const clean = String(str).replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ').trim();
+  const out = [];
+  for (const ch of clean) {
+    if (ch === '.' || ch === '-') out.push({ t: 'el', c: ch });
+    else if (ch === ' ') out.push({ t: 'charGap' });
+    else if (ch === '/') out.push({ t: 'wordGap' });
+  }
+  return out;
+}
+
+function renderRibbon(tokens, show) {
+  const bar = $('ribbon');
+  bar.scrollLeft = 0;                      // 換新內容時回到最左邊
+  if (!show || tokens.length === 0) {
+    bar.innerHTML = '<span class="ribbon-idle">節奏帶：播放時會顯示滴（短）／答（長）</span>';
+    return;
+  }
+  bar.innerHTML = tokens.map((tk) => {
+    if (tk.t === 'el') return `<i class="el ${tk.c === '.' ? 'dot' : 'dash'}"></i>`;
+    if (tk.t === 'charGap') return '<i class="gap"></i>';
+    return '<i class="word"></i>';
+  }).join('');
+}
+
+// 讓正在播放的那一格永遠留在畫面裡（超出寬度時自動捲動）
+function keepInView(node) {
+  const bar = $('ribbon');
+  if (!node || bar.scrollWidth <= bar.clientWidth) return;
+  const barBox = bar.getBoundingClientRect();
+  const nodeBox = node.getBoundingClientRect();
+  const delta = (nodeBox.left - barBox.left) - (bar.clientWidth / 2) + (nodeBox.width / 2);
+  const target = Math.max(0, Math.min(bar.scrollLeft + delta, bar.scrollWidth - bar.clientWidth));
+  // 速度快時用瞬間捲動，慢速時才平滑捲動，避免動畫追不上
+  const smooth = S.dit >= 80 && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  bar.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+async function playMorse(morseStr, { showRibbon = true } = {}) {
+  const tokens = parseMorse(morseStr);
+  stopEverything();
+  const me = playToken;
+
+  renderRibbon(tokens, showRibbon);
+  const els = [...$('ribbon').querySelectorAll('.el')];
+  let idx = 0;
+
+  for (let i = 0; i < tokens.length; i++) {
+    if (me !== playToken) return;
+    const tk = tokens[i];
+
+    if (tk.t === 'el') {
+      const dur = tk.c === '.' ? S.dit : S.dit * 3;
+      const node = els[idx++];
+      if (node) { node.classList.add('lit'); keepInView(node); }
+      signalOn(dur);
+      await sleep(dur);
+      if (me !== playToken) { signalOff(); return; }
+      signalOff();
+      if (node) node.classList.replace('lit', 'done');
+
+      const next = tokens[i + 1];
+      if (next && next.t === 'el') await sleep(S.dit);      // 字元內間隔 = 1 單位
+    } else if (tk.t === 'charGap') {
+      await sleep(3 * S.gap);                                // 字元間 = 3 單位
+    } else {
+      await sleep(7 * S.gap);                                // 單字間 = 7 單位
+    }
+  }
+}
+
+/* ---------- 6. 設定 ---------- */
+const STORE_KEY = 'scout-morse-v2';
+
+function saveSettings() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      dict: S.dictName, freq: S.freq, charWpm: S.charWpm, overallWpm: S.overallWpm,
+      sound: S.sound, light: S.light, vibrate: S.vibrate,
+      koch: +$('kochLevelSlider').value, quizMode: $('quizMode').value,
+    }));
+  } catch (e) { /* 無痕模式或不支援，略過 */ }
+}
+
+function loadSettings() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) {}
+  if (!d) return;
+  if (d.dict && CODE_TABLES[d.dict]) $('dictSelect').value = d.dict;
+  if (d.freq) $('freqSlider').value = d.freq;
+  if (d.charWpm) $('charWpmSlider').value = d.charWpm;
+  if (d.overallWpm) $('overallWpmSlider').value = d.overallWpm;
+  $('cfgSound').checked = d.sound !== false;
+  $('cfgLight').checked = d.light !== false;
+  $('cfgVibrate').checked = !!d.vibrate;
+  if (d.quizMode) $('quizMode').value = d.quizMode;
+  if (d.koch) $('kochLevelSlider').value = d.koch;
+}
+
+function updateConfigs() {
+  S.freq = +$('freqSlider').value;
+  S.charWpm = +$('charWpmSlider').value;
+  S.overallWpm = +$('overallWpmSlider').value;
+
+  // 整體速度不可超過字元速度
+  if (S.overallWpm > S.charWpm) {
+    S.overallWpm = S.charWpm;
+    $('overallWpmSlider').value = S.charWpm;
+  }
+
+  $('freqValue').textContent = S.freq;
+  $('charWpmValue').textContent = S.charWpm;
+  $('overallWpmValue').textContent = S.overallWpm;
+
+  S.dit = 1200 / S.charWpm;
+  S.gap = S.overallWpm < S.charWpm
+    ? ((50 * 1200 / S.overallWpm) - (31 * 1200 / S.charWpm)) / 19
+    : S.dit;
+
+  S.sound = $('cfgSound').checked;
+  S.light = $('cfgLight').checked;
+  S.vibrate = $('cfgVibrate').checked;
+
+  stopEverything();
+  saveSettings();
+}
+
+function switchDictionary() {
+  S.dictName = $('dictSelect').value;
+  S.dict = CODE_TABLES[S.dictName];
+  S.reverse = {};
+  S.letters = []; S.numbers = []; S.symbols = []; S.all = [];
+
+  for (const [char, code] of Object.entries(S.dict)) {
+    S.reverse[code] = char;
+    S.all.push(char);
+    if (/[A-Z]/.test(char)) S.letters.push(char);
+    else if (/[0-9]/.test(char)) S.numbers.push(char);
+    else S.symbols.push(char);
+  }
+
+  const optSymbols = $('quizMode').querySelector('option[value="symbols"]');
+  optSymbols.hidden = S.symbols.length === 0;
+  if (optSymbols.hidden && $('quizMode').value === 'symbols') $('quizMode').value = 'all';
+
+  // Koch 序列只保留目前密碼表有的字元，滑桿上限跟著調整
+  const pool = kochPool();
+  const slider = $('kochLevelSlider');
+  slider.max = Math.max(1, pool.length - 1);
+  if (+slider.value > +slider.max) slider.value = slider.max;
+
+  renderLearnGrid();
+  updateKochLevel();
+  saveSettings();
+}
+
+const kochPool = () => KOCH_SEQUENCE.filter((c) => S.dict[c]);
+
+/* ---------- 7. 分頁 ---------- */
+function openTab(tabName) {
+  stopEverything();   // 只停聲光，不會把測驗和成績清掉
+  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('is-active', p.id === tabName));
+  document.querySelectorAll('.tab').forEach((b) => {
+    const on = b.dataset.tab === tabName;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  renderRibbon([], false);
+}
+
+/* ---------- 8. 翻譯 ---------- */
+const isDecodeDir = () => $('dirDecode').checked;
+
+function textToMorse(text) {
+  return text.toUpperCase().split(/[\s\n]+/).filter(Boolean).map((word) => {
+    const codes = [];
+    for (const ch of word) if (S.dict[ch]) codes.push(S.dict[ch]);
+    return codes.join(' ');
+  }).filter(Boolean).join(' / ');
+}
+
+function morseToText(morse) {
+  return morse.trim().split(/\s*\/\s*/).map((word) =>
+    word.split(/\s+/).filter(Boolean).map((code) => S.reverse[code] || '?').join('')
+  ).join(' ');
+}
+
+function handleInput() {
+  stopEverything();
+  const raw = $('inputText').value;
+  $('outputText').value = isDecodeDir() ? morseToText(raw) : textToMorse(raw);
+}
+
+function switchTranslateDir() {
+  const dec = isDecodeDir();
+  $('inputLabel').textContent = dec ? '輸入密碼（用空白隔開字元，/ 隔開單字）' : '輸入文字';
+  $('outputLabel').textContent = dec ? '翻譯結果（文字）' : '翻譯結果（密碼）';
+  $('inputText').placeholder = dec ? '例如：-... .   .--. .-. . .--. .- .-. . -..' : '例如：BE PREPARED';
+  $('inputText').classList.toggle('mono', dec);
+  $('outputText').classList.toggle('mono', !dec);
+  $('inputText').value = '';
+  $('outputText').value = '';
+}
+
+/* ---------- 9. 學習字卡 ---------- */
+const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function renderLearnGrid() {
+  const q = ($('dictSearch').value || '').trim().toUpperCase();
+  const groups = [
+    ['英文字母', S.letters],
+    ['數字', S.numbers],
+    ['標點符號', S.symbols],
+  ];
+  let html = '';
+  let count = 0;
+
+  for (const [title, keys] of groups) {
+    const hits = keys.filter((k) => !q || k.includes(q) || S.dict[k].includes(q));
+    if (!hits.length) continue;
+    count += hits.length;
+    html += `<div class="group-title">${title}</div><div class="grid">`;
+    html += hits.map((k) =>
+      `<button class="card" data-char="${escapeHtml(k)}">
+         <div class="card-char">${escapeHtml(k)}</div>
+         <div class="card-morse">${S.dict[k]}</div>
+       </button>`).join('');
+    html += '</div>';
+  }
+  $('dictGrid').innerHTML = count ? html : '<p class="empty">找不到「' + escapeHtml(q) + '」，換個關鍵字試試。</p>';
+}
+
+/* ---------- 10. 測驗 ---------- */
+const isEncodeMode = () => $('modeEncode').checked;
+
+function switchPracticeMode() {
+  stopQuiz();
+  const enc = isEncodeMode();
+  const guess = $('userGuess');
+
+  $('morseKeypad').hidden = !enc;
+  $('btnReplay').hidden = enc;          // ← 這些元素現在真的存在了
+  $('btnShowAnswer').hidden = false;
+  $('practiceHint').textContent = enc
+    ? '看畫面上的字元，用下方按鍵打出對應的密碼。'
+    : '聆聽密碼聲音，輸入對應的字元。';
+
+  guess.value = '';
+  guess.maxLength = enc ? 8 : 1;        // 最長的密碼是 $ = ...-..- (7)
+  guess.placeholder = enc ? '.-' : '?';
+  guess.inputMode = enc ? 'none' : 'text';   // 編碼模式不叫出手機鍵盤，但仍可用實體鍵盤
+
+  $('questionDisplay').className = 'question';
+  $('questionDisplay').textContent = '按「開始測驗」出題';
+  $('answerBox').textContent = '';
+}
+
+function handleQuizModeChange() {
+  $('kochPanel').style.display = $('quizMode').value === 'koch' ? 'block' : 'none';
+  updateKochLevel();
+  saveSettings();
+}
+
+function updateKochLevel() {
+  const level = +$('kochLevelSlider').value;
+  const pool = kochPool().slice(0, level + 1);
+  $('kochLevelVal').textContent = level;
+  $('kochChars').textContent = pool.join(' ');
+  $('kochProgress').style.width = Math.min(100, (S.streak / 5) * 100) + '%';
+  saveSettings();
+}
+
+function startQuiz() {
+  S.quizRunning = true;
+  $('btnStartQuiz').hidden = true;
+  $('btnStopQuiz').hidden = false;
+  nextQuestion();
+}
+
+function stopQuiz() {
+  S.quizRunning = false;
+  quizToken++;
+  stopEverything();
+  $('btnStartQuiz').hidden = false;
+  $('btnStopQuiz').hidden = true;
+  S.quizChar = ''; S.quizMorse = '';
+  $('userGuess').value = '';
+  $('questionDisplay').className = 'question';
+  $('questionDisplay').textContent = '測驗已停止（成績保留）';
+  $('answerBox').textContent = '';
+}
+
+function pickPool() {
+  const mode = $('quizMode').value;
+  if (mode === 'koch') return kochPool().slice(0, +$('kochLevelSlider').value + 1);
+  if (mode === 'letters') return S.letters;
+  if (mode === 'numbers') return S.numbers;
+  if (mode === 'symbols' && S.symbols.length) return S.symbols;
+  return S.all;
+}
+
+async function nextQuestion() {
+  const me = ++quizToken;
+  const guess = $('userGuess');
+  const q = $('questionDisplay');
+
+  $('answerBox').textContent = '';
+  $('answerBox').className = 'answer';
+  guess.value = '';
+  guess.classList.remove('err', 'ok');
+  S.quizScored = false;
+
+  const pool = pickPool();
+  S.quizChar = pool[Math.floor(Math.random() * pool.length)];
+  S.quizMorse = S.dict[S.quizChar];
+
+  if (isEncodeMode()) {
+    q.className = 'question big';
+    q.textContent = S.quizChar;
+  } else {
+    q.className = 'question listen';
+    q.textContent = '🎧 仔細聽…';
+    await playMorse(S.quizMorse, { showRibbon: false });   // 解碼題不能劇透節奏帶
+    if (me !== quizToken) return;
+    q.textContent = '🎧 這是哪個字元？';
+    guess.focus({ preventScroll: true });
+  }
+}
+
+async function replayQuiz() {
+  if (!S.quizMorse || isEncodeMode()) return;
+  const q = $('questionDisplay');
+  q.textContent = '🎧 重播中…';
+  await playMorse(S.quizMorse, { showRibbon: false });
+  q.textContent = '🎧 這是哪個字元？';
+}
+
+function say(msg, kind) {
+  const box = $('answerBox');
+  box.textContent = msg;
+  box.className = 'answer ' + (kind || '');
+}
+
+function checkAnswer() {
+  const guess = $('userGuess');
+  guess.classList.remove('err', 'ok');
+
+  if (!S.quizRunning || !S.quizChar) { say('請先按「開始測驗」。', 'err'); return; }
+
+  const val = guess.value.trim().toUpperCase();
+  if (!val) { say('還沒輸入答案喔。', 'err'); return; }
+
+  const correct = isEncodeMode() ? val === S.quizMorse : val === S.quizChar;
+
+  if (!S.quizScored) {
+    S.total++;
+    if (correct) { S.correct++; S.streak++; } else { S.streak = 0; }
+    S.quizScored = true;
+    updateStats();
+  }
+
+  if (correct) {
+    guess.classList.add('ok');
+    successSound();
+    say(`🎉 答對了！${S.quizChar} ＝ ${S.quizMorse}`, 'ok');
+
+    const koch = $('quizMode').value === 'koch';
+    const auto = $('autoLevelKoch').checked;
+    const slider = $('kochLevelSlider');
+    let delay = 900;
+
+    if (koch && auto && S.streak >= 5 && +slider.value < +slider.max) {
+      slider.value = +slider.value + 1;
+      S.streak = 0;
+      updateKochLevel();
+      updateStats();
+      $('questionDisplay').className = 'question win';
+      $('questionDisplay').textContent = `🏆 晉升 Koch 等級 ${slider.value}！`;
+      say('連對 5 題，難度自動提高。', 'info');
+      delay = 1800;   // 先讓恭喜訊息顯示完，再出下一題
+    }
+
+    const me = quizToken;
+    setTimeout(() => { if (S.quizRunning && me === quizToken) nextQuestion(); }, delay);
+  } else {
+    guess.classList.add('err');
+    errorSound();
+    say('❌ 不對，再想想（可按「再聽一次」）。', 'err');
+
+    const me = quizToken;
+    setTimeout(() => {
+      if (me !== quizToken) return;
+      guess.value = '';
+      guess.classList.remove('err');
+      S.quizScored = false;   // 同一題可以再挑戰，但不會重複計分
+      guess.focus({ preventScroll: true });
+    }, 700);
+  }
+}
+
+function showAnswer() {
+  if (!S.quizChar) { say('請先按「開始測驗」。', 'err'); return; }
+  if (!S.quizScored) { S.total++; S.quizScored = true; }
+  S.streak = 0;
+  updateStats();
+  updateKochLevel();
+  say(`💡 答案是 ${S.quizChar} ＝ ${S.quizMorse}（本題算答錯）`, 'info');
+
+  const me = quizToken;
+  setTimeout(() => { if (S.quizRunning && me === quizToken) nextQuestion(); }, 1800);
+}
+
+function updateStats() {
+  const rate = S.total ? Math.round((S.correct / S.total) * 100) : 0;
+  $('stCorrect').textContent = S.correct;
+  $('stTotal').textContent = S.total;
+  $('stRate').textContent = rate + '%';
+  $('stStreak').textContent = S.streak;
+  $('kochProgress').style.width = Math.min(100, (S.streak / 5) * 100) + '%';
+}
+
+function resetStats() {
+  S.total = 0; S.correct = 0; S.streak = 0;
+  updateStats();
+  say('成績已歸零。', 'info');
+}
+
+function appendMorse(ch) {
+  const guess = $('userGuess');
+  if (guess.value.length >= 8) return;
+  guess.value += ch;
+  // 按鍵回饋音
+  if (S.sound) {
+    const ctx = ensureAudio();
+    if (ctx) {
+      const dur = (ch === '.' ? S.dit : S.dit * 3) / 1000;
+      const osc = ctx.createOscillator(); const g = ctx.createGain();
+      osc.frequency.value = S.freq;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + dur + 0.02);
+    }
+  }
+  if (S.vibrate && navigator.vibrate) navigator.vibrate(ch === '.' ? 25 : 70);
+}
+
+/* ---------- 11. 發報練習 ---------- */
+let pressing = false;
+let pressStart = 0, letterStart = 0, releaseAt = 0;
+let signal = '';
+let letterTimer = null, wordTimer = null;
+
+function keyDown() {
+  if (pressing) return;
+  pressing = true;
+  pressStart = Date.now();
+  if (!signal) letterStart = pressStart;
+  clearTimeout(letterTimer); clearTimeout(wordTimer);
+
+  playToken++;                        // 中斷其他播放
+  if (S.light) $('lamp').classList.add('on');
+  if (S.sound) toneOn();
+  if (S.vibrate && navigator.vibrate) navigator.vibrate(10000);
+  $('telegraphKey').classList.add('down');
+}
+
+function keyUp() {
+  if (!pressing) return;
+  pressing = false;
+  releaseAt = Date.now();
+
+  signalOff();
+  if (navigator.vibrate) navigator.vibrate(0);
+  $('telegraphKey').classList.remove('down');
+
+  const held = releaseAt - pressStart;
+  signal += held < S.dit * 2 ? '.' : '-';
+  $('currentSignalDisplay').textContent = signal;
+
+  letterTimer = setTimeout(commitLetter, S.dit * 3);       // 3 單位沒動作 → 斷字
+  wordTimer = setTimeout(() => {                            // 7 單位沒動作 → 斷詞
+    const out = $('manualOutputText');
+    if (out.value && !out.value.endsWith(' ')) out.value += ' ';
+  }, S.dit * 7);
+}
+
+function commitLetter() {
+  if (!signal) return;
+  const char = S.reverse[signal] || '?';
+  const out = $('manualOutputText');
+  out.value += char;
+  out.scrollTop = out.scrollHeight;
+
+  // 估算實際發送速率
+  if (char !== '?' && releaseAt > letterStart) {
+    let units = 0;
+    for (const c of signal) units += c === '.' ? 1 : 3;
+    units += signal.length - 1;
+    const per = (releaseAt - letterStart) / units;
+    if (per > 0) {
+      const wpm = Math.min(99, Math.round(1200 / per));
+      $('currentWpmDisplay').textContent = wpm + ' WPM';
+    }
+  }
+  signal = '';
+  $('currentSignalDisplay').textContent = '—';
+}
+
+/* ---------- 12. 綁定事件 ---------- */
+function bind() {
+  // 分頁
+  document.querySelectorAll('.tab').forEach((b) =>
+    b.addEventListener('click', () => openTab(b.dataset.tab)));
+
+  // 設定
+  ['freqSlider', 'charWpmSlider', 'overallWpmSlider'].forEach((id) =>
+    $(id).addEventListener('input', updateConfigs));
+  ['cfgSound', 'cfgLight', 'cfgVibrate'].forEach((id) =>
+    $(id).addEventListener('change', updateConfigs));
+  $('dictSelect').addEventListener('change', switchDictionary);
+  $('btnTestSignal').addEventListener('click', () => playMorse('... --- ...'));
+
+  // 翻譯
+  $('inputText').addEventListener('input', handleInput);
+  $('dirEncode').addEventListener('change', () => { switchTranslateDir(); handleInput(); });
+  $('dirDecode').addEventListener('change', () => { switchTranslateDir(); handleInput(); });
+  $('btnPlayMorse').addEventListener('click', () => {
+    const morse = isDecodeDir() ? $('inputText').value : $('outputText').value;
+    if (morse.trim()) playMorse(morse);
+  });
+  $('btnStopMorse').addEventListener('click', () => { stopEverything(); renderRibbon([], false); });
+  $('btnClearText').addEventListener('click', () => {
+    $('inputText').value = ''; $('outputText').value = '';
+    stopEverything(); renderRibbon([], false);
+  });
+  $('btnCopy').addEventListener('click', async () => {
+    const txt = $('outputText').value;
+    if (!txt) return;
+    try { await navigator.clipboard.writeText(txt); $('btnCopy').textContent = '✅ 已複製'; }
+    catch (e) { $('outputText').select(); }
+    setTimeout(() => { $('btnCopy').textContent = '📋 複製'; }, 1500);
+  });
+
+  // 學習
+  $('dictSearch').addEventListener('input', renderLearnGrid);
+  $('dictGrid').addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+    document.querySelectorAll('.card.playing').forEach((c) => c.classList.remove('playing'));
+    card.classList.add('playing');
+    playMorse(S.dict[card.dataset.char]);
+    setTimeout(() => card.classList.remove('playing'), 1500);
+  });
+
+  // 測驗
+  $('modeDecode').addEventListener('change', switchPracticeMode);
+  $('modeEncode').addEventListener('change', switchPracticeMode);
+  $('quizMode').addEventListener('change', handleQuizModeChange);
+  $('kochLevelSlider').addEventListener('input', updateKochLevel);
+  $('autoLevelKoch').addEventListener('change', saveSettings);
+  $('btnStartQuiz').addEventListener('click', startQuiz);
+  $('btnStopQuiz').addEventListener('click', stopQuiz);
+  $('btnReplay').addEventListener('click', replayQuiz);
+  $('btnShowAnswer').addEventListener('click', showAnswer);
+  $('btnCheck').addEventListener('click', checkAnswer);
+  $('btnReset').addEventListener('click', resetStats);
+  $('btnBackspace').addEventListener('click', () => {
+    const g = $('userGuess');
+    g.value = g.value.slice(0, -1);
+    if (S.vibrate && navigator.vibrate) navigator.vibrate(20);
+  });
+  document.querySelectorAll('.key[data-morse]').forEach((k) =>
+    k.addEventListener('click', () => appendMorse(k.dataset.morse)));
+
+  // 編碼模式只允許 . 和 -，Enter 送出
+  $('userGuess').addEventListener('input', () => {
+    if (isEncodeMode()) $('userGuess').value = $('userGuess').value.replace(/[^.-]/g, '');
+  });
+  $('userGuess').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); checkAnswer(); }
+  });
+
+  // 發報鍵：滑鼠 / 觸控 / 空白鍵都可以
+  const tk = $('telegraphKey');
+  tk.addEventListener('pointerdown', (e) => { e.preventDefault(); tk.setPointerCapture(e.pointerId); keyDown(); });
+  tk.addEventListener('pointerup', keyUp);
+  tk.addEventListener('pointercancel', keyUp);
+  tk.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space' || e.repeat) return;
+    if (!$('ManualTab').classList.contains('is-active')) return;
+    e.preventDefault(); keyDown();
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.code !== 'Space') return;
+    if (!$('ManualTab').classList.contains('is-active')) return;
+    e.preventDefault(); keyUp();
+  });
+
+  $('btnSpace').addEventListener('click', () => { $('manualOutputText').value += ' '; });
+  $('btnManualBack').addEventListener('click', () => {
+    const o = $('manualOutputText');
+    o.value = o.value.slice(0, -1);
+  });
+  $('btnClearManual').addEventListener('click', () => {
+    $('manualOutputText').value = '';
+    signal = '';
+    $('currentSignalDisplay').textContent = '—';
+    $('currentWpmDisplay').textContent = '-- WPM';
+  });
+
+  // 切到背景就停止發聲，避免手機一直嗡嗡叫
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopEverything(); });
+}
+
+/* ---------- 13. 啟動 ---------- */
+function init() {
+  loadSettings();
+  bind();
+  updateConfigs();          // ← 舊版漏掉這行，Farnsworth 間隔一開始不會生效
+  switchDictionary();
+  switchTranslateDir();
+  handleQuizModeChange();
+  switchPracticeMode();
+  updateStats();
+  renderRibbon([], false);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>

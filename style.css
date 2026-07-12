@@ -43,6 +43,10 @@
 
 * { box-sizing: border-box; }
 
+/* .keypad 等元素有 display:flex，類別選擇器會蓋掉 UA 的 [hidden]{display:none}，
+   所以要明確宣告，否則 hidden 屬性形同無效 */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   padding: 0 0 96px;              /* 留位置給底部導覽 */
